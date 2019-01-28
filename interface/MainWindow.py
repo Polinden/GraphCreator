@@ -1,6 +1,7 @@
 from tkinter import *
 import tkinter.filedialog as fdialog
 import textwrap
+import os
 
 
 
@@ -22,6 +23,7 @@ class MainFrame(Frame):
         self.FillToolbar()
         #scale to full screen
         self.AllRowColFlexible()
+        self.FillWorkTable()
 
 
 
@@ -49,15 +51,24 @@ class MainFrame(Frame):
 
 
     def FillToolbar(self):
-        self.photo1 = PhotoImage(file="img/circle.png")
-        self.photo2 = PhotoImage (file="img/edge.png")
-        self.photo3 = PhotoImage(file="img/line.png")
+        path=os.path.dirname(os.path.abspath(__file__))
+        self.photo1 = PhotoImage(file=os.path.join(path, "img/circle.png"))
+        self.photo2 = PhotoImage (file=os.path.join(path, "img/edge.png"))
+        self.photo3 = PhotoImage(file=os.path.join(path, "img/line.png"))
         self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60)
         self.bt1.grid(column=0, row=0, sticky=(N, W, E))
         self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60)
         self.bt2.grid (column=0, row=1, sticky=(N, W, E))
         self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60)
         self.bt3.grid (column=0, row=2, sticky=(N, W, E))
+
+
+    def FillWorkTable(self):
+        c = Canvas (self.frames['graph'])
+        c.grid(row=0, column=0, sticky=(N,S,W,E))
+        c.create_oval (70, 70, 32, 32, outline='blue', width=4)
+        c.create_line (72, 56, 200, 100, fill='green', width=4, arrow=LAST)
+        c.create_text (52, 52, fill="black", text='1')
 
 
 
