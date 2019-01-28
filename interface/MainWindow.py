@@ -6,6 +6,36 @@ import os
 
 
 
+class Vertice:
+    radius = 32
+    width=4
+    color='blue'
+    font='Arial 8'
+    def __init__(self, x, y, number):
+        self.x, self.y, self.number  =x, y, number
+    def  draw(self, canvas):
+        canvas.create_oval (self.x, self.y, Vertice.radius, Vertice.radius, outline=Vertice.color, width=Vertice.width)
+        canvas.create_text (self.x-Vertice.radius/2-Vertice.width, self.y-Vertice.radius/2-Vertice.width,
+                            font=Vertice.font, fill="black", text=str(self.number))
+    def getInPoint(self):
+        """
+        Point to connect inbound arrow
+        :return: x,y
+        """
+        return None
+    def getOutPoint(self):
+        """
+        Point to connect outbound arrow
+        :return: x,y
+        """
+        return None
+    def isMe(self, x,y):
+        """
+        Check if x,y is inside the circle
+        :return: boolean
+        """
+        return False
+
 
 class MainFrame(Frame):
     """
@@ -64,11 +94,15 @@ class MainFrame(Frame):
 
 
     def FillWorkTable(self):
-        c = Canvas (self.frames['graph'])
-        c.grid(row=0, column=0, sticky=(N,S,W,E))
-        c.create_oval (70, 70, 32, 32, outline='blue', width=4)
-        c.create_line (72, 56, 200, 100, fill='green', width=4, arrow=LAST)
-        c.create_text (52, 52, fill="black", text='1')
+        self.c = Canvas (self.frames['graph'])
+        self.c.grid(row=0, column=0, sticky=(N,S,W,E))
+
+        #test
+        v1=Vertice(70,70,12)
+        v1.draw(self.c)
+
+        self.c.create_line (72, 56, 200, 100, fill='green', width=4, arrow=LAST)
+
 
 
 
