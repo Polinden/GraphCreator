@@ -2,39 +2,84 @@ from tkinter import *
 import tkinter.filedialog as fdialog
 import textwrap
 import os
-
+from math import *
 
 
 
 class Vertice:
-    radius = 32
+    radius = 25
     width=4
     color='blue'
     font='Arial 8'
     def __init__(self, x, y, number):
         self.x, self.y, self.number  =x, y, number
     def  draw(self, canvas):
-        canvas.create_oval (self.x, self.y, Vertice.radius, Vertice.radius, outline=Vertice.color, width=Vertice.width)
-        canvas.create_text (self.x-Vertice.radius/2-Vertice.width, self.y-Vertice.radius/2-Vertice.width,
-                            font=Vertice.font, fill="black", text=str(self.number))
-    def getInPoint(self):
+        canvas.create_oval (self.x-Vertice.radius, self.y-Vertice.radius, self.x+Vertice.radius, self.y+Vertice.radius, outline=Vertice.color, width=Vertice.width)
+        canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str(self.number))
+    def getTouchPoint(self, xt, yt):
+        t=(yt-self.y)/(xt-self.x)
+        a=atan(t)
+        k=1
+        if xt<self.x:
+            k=-1
+        x=k*cos(a)*Vertice.radius+self.x
+        y=k*sin(a)*Vertice.radius+self.y
+        return x,y
+        """b1=self.y-self.x
+        b2=self.y+self.x
+        y1=xt+b1
+        y2=-xt+b2
+        if yt>=y1 and yt>=y2:
+            return self.x, self.y+Vertice.radius
+        elif yt<=y1 and yt<=y2:
+            return self.x, self.y-Vertice.radius
+        elif yt>=y2 and yt<=y1:
+            return self.x+Vertice.radius, self.y
+        elif yt<=y2 and yt>=y1:
+            return self.x-Vertice.radius, self.y
         """
-        Point to connect inbound arrow
-        :return: x,y
-        """
-        return None
-    def getOutPoint(self):
-        """
-        Point to connect outbound arrow
-        :return: x,y
-        """
-        return None
+
+
+    def NotIntersect(self, x, y):
+        l=sqrt(pow((self.x-x,2))+pow((self.y-y,2)))
+        if l<4*Vertice.radius:
+          return False
+        else:
+            return True
+
+
     def isMe(self, x,y):
-        """
-        Check if x,y is inside the circle
-        :return: boolean
-        """
-        return False
+        l = sqrt (pow ((self.x - x, 2)) + pow ((self.y - y, 2)))
+        if l>Vertice.radius:
+          return False
+        return True
+
+
+class Edge:
+    width = 4
+    color = 'black'
+    def __init__(self, v1, v2):
+        self.v1, self.v2 = v1, v2
+    def  draw(self, canvas):
+        print(self.v1,self.v2)
+        x1,y1=self.v1.getTouchPoint(self.v2.x,self.v2.y)
+        x2,y2=self.v2.getTouchPoint(self.v1.x, self.v1.y)
+        canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 class MainFrame(Frame):
@@ -98,11 +143,12 @@ class MainFrame(Frame):
         self.c.grid(row=0, column=0, sticky=(N,S,W,E))
 
         #test
-        v1=Vertice(70,70,12)
-        v1.draw(self.c)
-
-        self.c.create_line (72, 56, 200, 100, fill='green', width=4, arrow=LAST)
-
+        v2=Vertice(70,370,2)
+        v2.draw(self.c)
+        v1=Vertice(260,60,1)
+        v1.draw (self.c)
+        e1=Edge(v1,v2)
+        e1.draw(self.c)
 
 
 
@@ -116,6 +162,8 @@ class MainFrame(Frame):
         self.frames['toolbar'].grid_rowconfigure (0, weight=0)
         self.frames['toolbar'].grid_rowconfigure (1, weight=0)
         self.frames['toolbar'].grid_rowconfigure (2, weight=0)
+        self.frames['graph'].grid_rowconfigure (0, weight=1)
+        self.frames['graph'].grid_columnconfigure (0, weight=1)
 
 
 
