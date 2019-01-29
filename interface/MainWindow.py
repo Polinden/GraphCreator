@@ -3,6 +3,33 @@ import tkinter.filedialog as fdialog
 import textwrap
 import os
 from math import *
+import random
+
+
+
+
+class Graph:
+    def __init__(self):
+        self.lv = []
+        self.le = []
+
+    def addVertice(self,x,y,number):
+        if any (v.intersectMe (x, y) for v in self.lv):
+            return None
+        v = Vertice (x, y, number)
+        self.lv.append(v)
+        return v
+
+    def getVertice(self, x, y):
+        for v in self.lv:
+            if v.isMe(x,y):
+                return v
+        return None
+
+    def addEdge(self,v1,v2):
+        e=Edge(v1, v2)
+        self.le.append(e)
+        return e
 
 
 
@@ -40,12 +67,12 @@ class Vertice:
         """
 
 
-    def NotIntersect(self, x, y):
-        l=sqrt(pow((self.x-x,2))+pow((self.y-y,2)))
+    def intersectMe(self, x, y):
+        l=sqrt(pow(self.x-x, 2)+pow(self.y-y, 2))
         if l<4*Vertice.radius:
-          return False
+          return True
         else:
-            return True
+            return False
 
 
     def isMe(self, x,y):
@@ -61,21 +88,9 @@ class Edge:
     def __init__(self, v1, v2):
         self.v1, self.v2 = v1, v2
     def  draw(self, canvas):
-        print(self.v1,self.v2)
         x1,y1=self.v1.getTouchPoint(self.v2.x,self.v2.y)
         x2,y2=self.v2.getTouchPoint(self.v1.x, self.v1.y)
         canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -90,15 +105,15 @@ class MainFrame(Frame):
 
     def __init__(self, root):
         Frame.__init__(self, root)
-        #makes main menu
         self.CreateMenu(root)
         self.root=root
-        #create all frames
         self.frames=self.CreateFrames()
         self.FillToolbar()
-        #scale to full screen
-        self.AllRowColFlexible()
         self.FillWorkTable()
+        self.AllRowColFlexible()
+        self.dragX=0
+        self.dragY = 0
+        self.lineDraging=None
 
 
 
@@ -130,25 +145,17 @@ class MainFrame(Frame):
         self.photo1 = PhotoImage(file=os.path.join(path, "img/circle.png"))
         self.photo2 = PhotoImage (file=os.path.join(path, "img/edge.png"))
         self.photo3 = PhotoImage(file=os.path.join(path, "img/line.png"))
-        self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60)
+        self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60, command=self.createVertice)
         self.bt1.grid(column=0, row=0, sticky=(N, W, E))
-        self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60)
+        self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60, command=self.createEdge)
         self.bt2.grid (column=0, row=1, sticky=(N, W, E))
-        self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60)
+        self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60, command=self.createArrow)
         self.bt3.grid (column=0, row=2, sticky=(N, W, E))
 
 
     def FillWorkTable(self):
         self.c = Canvas (self.frames['graph'])
         self.c.grid(row=0, column=0, sticky=(N,S,W,E))
-
-        #test
-        v2=Vertice(70,370,2)
-        v2.draw(self.c)
-        v1=Vertice(260,60,1)
-        v1.draw (self.c)
-        e1=Edge(v1,v2)
-        e1.draw(self.c)
 
 
 
@@ -164,7 +171,6 @@ class MainFrame(Frame):
         self.frames['toolbar'].grid_rowconfigure (2, weight=0)
         self.frames['graph'].grid_rowconfigure (0, weight=1)
         self.frames['graph'].grid_columnconfigure (0, weight=1)
-
 
 
     def RegisterListener(self, answer=None, next=None, skip=None, open=None, save=None):
@@ -198,12 +204,72 @@ class MainFrame(Frame):
         top.geometry("+{}+{}".format(x + 280, y + 120)) # put it slightly right and down from root
         top.title("Про програму...")
         Message(top, text=text, justify=LEFT, anchor=NW, width=600).grid(row=0, column=0, columnspan=2, padx=30)
-        run=lambda: webbrowser.open_new('https://www.freeformatter.com/xml-validator-xsd.html')
-        Button(top, text="Вихiд".center(14, ' '), command=top.destroy).grid(row=1, column=0, pady=10, padx=40)
-        Button(top, text="Перевiрити", command=run).grid(row=1, column=1, pady=10, padx=20)
+        Button(top, text="Вихiд".center(14, ' '), command=top.destroy).grid(row=1, column=1, pady=10, padx=40)
 
 
 
+    def createVertice(self):
+        self.bt1.config(relief=SUNKEN)
+        self.bt2.config(relief=RAISED)
+        self.bt3.config(relief=RAISED)
+        self.dNdMode (False)
+        self.c.bind("<Button-1>", self.addV)
+
+    def addV(self, event):
+        #test
+        g = Graph ()
+        v=g.addVertice(event.x, event.y, 1)
+        v.draw(self.c)
+
+    def test(self):
+        self.c.delete ("all")
+        g=Graph()
+        vp=None
+        for i in range(50):
+            x=random.randint(30, 600)
+            y = random.randint (30, 600)
+            v=g.addVertice(x,y,i)
+            if v:
+                v.draw(self.c)
+                if vp:
+                    e=g.addEdge(vp,v)
+                    e.draw(self.c)
+                vp=v
+
+    def createEdge(self):
+        self.bt2.config(relief=SUNKEN)
+        self.bt1.config(relief=RAISED)
+        self.bt3.config(relief=RAISED)
+        self.dNdMode()
+
+    def createArrow(self):
+        self.bt3.config(relief=SUNKEN)
+        self.bt1.config(relief=RAISED)
+        self.bt2.config(relief=RAISED)
+        self.dNdMode(False)
+        self.test()
+
+
+    def dNdMode(self, switch=True):
+        if switch:
+            self.c.bind ("<ButtonPress-1>", self.onDragstart)
+            self.c.bind ("<B1-Motion>", self.onDraging)
+            self.c.bind ("<ButtonRelease-1>", self.onDrop)
+        else:
+            self.c.unbind ('<ButtonPress-1>')
+            self.c.unbind ('<B1-Motion>')
+            self.c.unbind ('<ButtonRelease-1>')
+
+    def onDragstart(self, event):
+        self.dragX=event.x
+        self.dragY = event.y
+
+    def onDraging(self, event):
+        self.c.delete(self.lineDraging)
+        self.lineDraging = self.c.create_line(self.dragX, self.dragY, event.x, event.y, fill='gray', width=3)
+
+    def onDrop(self, event):
+        self.c.create_line(self.dragX, self.dragY, event.x, event.y, fill='black', width=3)
 
 
 
@@ -228,7 +294,7 @@ if __name__=='__main__':
     window = Tk ()
     window.title ("Welcome to Graph creator")
     MainFrame(window)
-    window.geometry('1000x400')
+    window.geometry('1200x800')
     window.mainloop ()
 
 
