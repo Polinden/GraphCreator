@@ -3,7 +3,8 @@ import tkinter.filedialog as fdialog
 import textwrap
 import os
 from math import *
-from tkinter.messagebox import showinfo
+from tkinter import simpledialog
+
 
 
 
@@ -30,6 +31,9 @@ class Graph:
         self.al[v1].append(e)
         return e
 
+    def clean(self):
+        self.al.clear()
+
 
 
 class Vertice:
@@ -39,8 +43,13 @@ class Vertice:
     font='Arial 8'
     def __init__(self, x, y, number):
         self.x, self.y, self.number  =x, y, number
+        self.text,self.circle=None,None
 
     def  draw(self, canvas):
+        if self.text:
+            canvas.delete(self.text)
+        if self.circle:
+            canvas.delete(self.circle)
         self.circle=canvas.create_oval (self.x-Vertice.radius, self.y-Vertice.radius, self.x+Vertice.radius, self.y+Vertice.radius, outline=Vertice.color, width=Vertice.width)
         self.text=canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str(self.number))
 
@@ -91,8 +100,9 @@ class MainFrame(Frame):
 
     def __init__(self, root):
         Frame.__init__(self, root)
+        self.root = root
         self.CreateMenu(root)
-        self.root=root
+        self.CreatePopUpMenu (root)
         self.frames=self.CreateFrames()
         self.FillToolbar()
         self.FillWorkTable()
@@ -115,9 +125,16 @@ class MainFrame(Frame):
         menu.add_cascade(label='Про програму', menu=aboutmenu)
         testmenu.add_command(label='Запамʼятати граф', command=self.SaveFileMenu, state=DISABLED)
         testmenu.add_command(label='Вихід', command=root.quit)
+        testmenu.add_command (label='Новий граф', command=self.ClearGraph)
         aboutmenu.add_command(label='Інформація', command=self.InfoDialog)
         root.config(menu=menu)
 
+    def CreatePopUpMenu(self, root):
+        self.popup = Menu (root, tearoff=0)
+        self.popup.add_command (label="Видалити вершину")
+        self.popup.add_command (label="Видалити ребра")
+        self.popup.add_separator ()
+        self.popup.add_command (label="Перейменувати",command=self.RenameV)
 
     def CreateFrames(self):
         tb = Frame(self, bd=1, relief=SUNKEN)
@@ -146,10 +163,15 @@ class MainFrame(Frame):
         self.c.bind('<Button-3>', self.popupMenu)
 
 
+    def ClearGraph(self):
+        self.c.delete('all')
+        self.graph.clean()
+
+
     def popupMenu(self, event):
         v=self.graph.getVertice(event.x, event.y)
         if v:
-            showinfo ('Нашли!', v.number)
+            self.popup.tk_popup (event.x_root, event.y_root)
 
 
     def AllRowColFlexible(self, *frames):
@@ -166,6 +188,10 @@ class MainFrame(Frame):
         self.frames['graph'].grid_columnconfigure (0, weight=1)
 
 
+    def RenameV(self):
+        nv = simpledialog.askinteger ("","Введіть новий номер", parent=self.root, minvalue=0, maxvalue=100)
+        v.numer=nv
+        v.draw(self.c)
 
     def SaveFileMenu(self):
         file = fdialog.asksaveasfile(filetypes=[('Txt files', '.txt')], title='Обрати файл з результатом')
