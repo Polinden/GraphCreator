@@ -50,7 +50,8 @@ class Graph:
         return e
 
     def clean(self):
-        self.al.clear ()
+        self.al.clear()
+        self.bn.clear()
 
 
 class Vertice:
@@ -250,21 +251,22 @@ class MainFrame (Frame):
 
     def createMainMenu(self, root):
         # basement
-        menu = Menu (root)
+        menu = Menu(root)
         # first level
-        self.test_menu = testmenu = Menu (menu, tearoff=0)
-        aboutmenu = Menu (menu, tearoff=0)
+        self.graphmenu = Menu(menu, tearoff=0)
+        aboutmenu = Menu(menu, tearoff=0)
         # second level
-        menu.add_cascade (label='Тест', menu=testmenu)
+        menu.add_cascade (label='Граф', menu=self.graphmenu)
         menu.add_cascade (label='Про програму', menu=aboutmenu)
-        testmenu.add_command (label='Запамʼятати граф', command=self.saveFileMenu, state=DISABLED)
-        testmenu.add_command (label='Вихід', command=root.quit)
-        testmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
+        self.graphmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
+        self.graphmenu.add_command (label='Запамʼятати граф', command=self.saveFileMenu, state=DISABLED)
+        self.graphmenu.add_command (label='Завантажити граф')
+        self.graphmenu.add_command (label='Вихід', command=root.quit)
         aboutmenu.add_command (label='Інформація', command=self.infoDialog)
         root.config (menu=menu)
 
     def clearGraphMenu(self):
-        self.c.delete ('all')
+        self.c.delete('all')
         self.graph.clean ()
 
     def saveFileMenu(self):
