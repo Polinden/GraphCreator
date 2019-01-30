@@ -3,32 +3,31 @@ import tkinter.filedialog as fdialog
 import textwrap
 import os
 from math import *
-import random
+from tkinter.messagebox import showinfo
 
 
 
 
 class Graph:
     def __init__(self):
-        self.lv = []
-        self.le = []
+        self.al = {}
 
-    def addVertice(self,x,y,number):
-        if any (v.intersectMe (x, y) for v in self.lv):
+    def addVertice(self,x,y):
+        if any (v.intersectMe (x, y) for v in self.al.keys()):
             return None
-        v = Vertice (x, y, number)
-        self.lv.append(v)
+        v = Vertice (x, y, len(self.al.keys())+1)
+        self.al[v]=[]
         return v
 
     def getVertice(self, x, y):
-        for v in self.lv:
+        for v in self.al.keys():
             if v.isMe(x,y):
                 return v
         return None
 
     def addEdge(self,v1,v2):
         e=Edge(v1, v2)
-        self.le.append(e)
+        self.al[v1].append(e)
         return e
 
 
@@ -40,9 +39,11 @@ class Vertice:
     font='Arial 8'
     def __init__(self, x, y, number):
         self.x, self.y, self.number  =x, y, number
+
     def  draw(self, canvas):
-        canvas.create_oval (self.x-Vertice.radius, self.y-Vertice.radius, self.x+Vertice.radius, self.y+Vertice.radius, outline=Vertice.color, width=Vertice.width)
-        canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str(self.number))
+        self.circle=canvas.create_oval (self.x-Vertice.radius, self.y-Vertice.radius, self.x+Vertice.radius, self.y+Vertice.radius, outline=Vertice.color, width=Vertice.width)
+        self.text=canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str(self.number))
+
     def getTouchPoint(self, xt, yt):
         t=(yt-self.y)/(xt-self.x)
         a=atan(t)
@@ -52,34 +53,25 @@ class Vertice:
         x=k*cos(a)*Vertice.radius+self.x
         y=k*sin(a)*Vertice.radius+self.y
         return x,y
-        """b1=self.y-self.x
-        b2=self.y+self.x
-        y1=xt+b1
-        y2=-xt+b2
-        if yt>=y1 and yt>=y2:
-            return self.x, self.y+Vertice.radius
-        elif yt<=y1 and yt<=y2:
-            return self.x, self.y-Vertice.radius
-        elif yt>=y2 and yt<=y1:
-            return self.x+Vertice.radius, self.y
-        elif yt<=y2 and yt>=y1:
-            return self.x-Vertice.radius, self.y
-        """
-
 
     def intersectMe(self, x, y):
         l=sqrt(pow(self.x-x, 2)+pow(self.y-y, 2))
-        if l<4*Vertice.radius:
+        if l<3*Vertice.radius:
           return True
         else:
             return False
 
-
     def isMe(self, x,y):
-        l = sqrt (pow ((self.x - x, 2)) + pow ((self.y - y, 2)))
+        l = sqrt (pow (self.x - x, 2) + pow (self.y - y, 2))
         if l>Vertice.radius:
           return False
         return True
+
+    def __hash__(self):
+        return hash((self.x, self.y))
+
+    def __eq__(self, other):
+        return self.x == other.x and self.y == other.y
 
 
 class Edge:
@@ -90,18 +82,12 @@ class Edge:
     def  draw(self, canvas):
         x1,y1=self.v1.getTouchPoint(self.v2.x,self.v2.y)
         x2,y2=self.v2.getTouchPoint(self.v1.x, self.v1.y)
-        canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
-
-
+        self.line=canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
 
 
 
 
 class MainFrame(Frame):
-    """
-    MainFrame - the first ordered container for the widgets
-    To be created and gets Listeners for RegisterListeners
-    """
 
     def __init__(self, root):
         Frame.__init__(self, root)
@@ -111,10 +97,11 @@ class MainFrame(Frame):
         self.FillToolbar()
         self.FillWorkTable()
         self.AllRowColFlexible()
+        #filds
         self.dragX=0
         self.dragY = 0
         self.lineDraging=None
-
+        self.graph=Graph()
 
 
     def CreateMenu(self, root):
@@ -145,18 +132,24 @@ class MainFrame(Frame):
         self.photo1 = PhotoImage(file=os.path.join(path, "img/circle.png"))
         self.photo2 = PhotoImage (file=os.path.join(path, "img/edge.png"))
         self.photo3 = PhotoImage(file=os.path.join(path, "img/line.png"))
-        self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60, command=self.createVertice)
+        self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60, command=lambda: self.switchButtons(1))
         self.bt1.grid(column=0, row=0, sticky=(N, W, E))
-        self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60, command=self.createEdge)
+        self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60, command=lambda: self.switchButtons(2))
         self.bt2.grid (column=0, row=1, sticky=(N, W, E))
-        self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60, command=self.createArrow)
+        self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60, command=lambda: self.switchButtons(3))
         self.bt3.grid (column=0, row=2, sticky=(N, W, E))
 
 
     def FillWorkTable(self):
         self.c = Canvas (self.frames['graph'])
         self.c.grid(row=0, column=0, sticky=(N,S,W,E))
+        self.c.bind('<Button-3>', self.popupMenu)
 
+
+    def popupMenu(self, event):
+        v=self.graph.getVertice(event.x, event.y)
+        if v:
+            showinfo ('Нашли!', v.number)
 
 
     def AllRowColFlexible(self, *frames):
@@ -173,12 +166,6 @@ class MainFrame(Frame):
         self.frames['graph'].grid_columnconfigure (0, weight=1)
 
 
-    def RegisterListener(self, answer=None, next=None, skip=None, open=None, save=None):
-        """
-        Main connector to plug in the listeners to Buttons And Menu commands
-        """
-        self.answer, self.skip, self.next, self.open, self.save = answer, skip, next, open, save
-
 
     def SaveFileMenu(self):
         file = fdialog.asksaveasfile(filetypes=[('Txt files', '.txt')], title='Обрати файл з результатом')
@@ -193,11 +180,10 @@ class MainFrame(Frame):
 
     def InfoDialog(self):
         text='''
-        Використовуйте файл тесту у форматi XML.
-        Картинки покладiть в тому ж каталозi що й файл з тестом.
-        Краще перевiрьте файл, за допомогою сервiсiв, 
-        наприклад:  https://www.freeformatter.com. 
-        Схема файлу додається: text.xsd'''
+        Используйте для рисования направленного или 
+        ненаправленного графа, а также для обхода его 
+        вершин методом поиска "в глубину" или "ширину" 
+        '''
         text=textwrap.dedent(text)  #get rid of left indent it the text
         top = Toplevel(self)        #show dialog - copied from stackoferflow
         x, y = self.root.winfo_x(), self.root.winfo_y()
@@ -207,54 +193,17 @@ class MainFrame(Frame):
         Button(top, text="Вихiд".center(14, ' '), command=top.destroy).grid(row=1, column=1, pady=10, padx=40)
 
 
-
-    def createVertice(self):
-        self.bt1.config(relief=SUNKEN)
-        self.bt2.config(relief=RAISED)
-        self.bt3.config(relief=RAISED)
-        self.dNdMode (False)
-        self.c.bind("<Button-1>", self.addV)
-
-    def addV(self, event):
-        #test
-        g = Graph ()
-        v=g.addVertice(event.x, event.y, 1)
-        v.draw(self.c)
-
-    def test(self):
-        self.c.delete ("all")
-        g=Graph()
-        vp=None
-        for i in range(50):
-            x=random.randint(30, 600)
-            y = random.randint (30, 600)
-            v=g.addVertice(x,y,i)
-            if v:
-                v.draw(self.c)
-                if vp:
-                    e=g.addEdge(vp,v)
-                    e.draw(self.c)
-                vp=v
-
-    def createEdge(self):
-        self.bt2.config(relief=SUNKEN)
-        self.bt1.config(relief=RAISED)
-        self.bt3.config(relief=RAISED)
-        self.dNdMode()
-
-    def createArrow(self):
-        self.bt3.config(relief=SUNKEN)
-        self.bt1.config(relief=RAISED)
-        self.bt2.config(relief=RAISED)
-        self.dNdMode(False)
-        self.test()
+    def addVertice(self, event):
+        v=self.graph.addVertice(event.x, event.y)
+        if v:
+            v.draw(self.c)
 
 
     def dNdMode(self, switch=True):
         if switch:
             self.c.bind ("<ButtonPress-1>", self.onDragstart)
             self.c.bind ("<B1-Motion>", self.onDraging)
-            self.c.bind ("<ButtonRelease-1>", self.onDrop)
+            self.c.bind ("<ButtonRelease-1>", self.onDropAddEdge)
         else:
             self.c.unbind ('<ButtonPress-1>')
             self.c.unbind ('<B1-Motion>')
@@ -268,26 +217,37 @@ class MainFrame(Frame):
         self.c.delete(self.lineDraging)
         self.lineDraging = self.c.create_line(self.dragX, self.dragY, event.x, event.y, fill='gray', width=3)
 
-    def onDrop(self, event):
-        self.c.create_line(self.dragX, self.dragY, event.x, event.y, fill='black', width=3)
+    def onDropAddEdge(self, event):
+        self.c.delete (self.lineDraging)
+        v1=self.graph.getVertice(self.dragX,self.dragY)
+        v2=self.graph.getVertice(event.x,event.y)
+        if v1 and v2:
+            e=self.graph.addEdge(v1,v2)
+            if e:
+                e.draw(self.c)
 
+    def switchButtons(self, n):
+        if n==1:
+            self.dNdMode(False)
+            self.c.bind ("<Button-1>", self.addVertice)
+            self.bt1.config (relief=SUNKEN)
+            self.bt2.config (relief=RAISED)
+            self.bt3.config (relief=RAISED)
+        elif n==2:
+            self.c.unbind ("<Button-1>")
+            self.dNdMode()
+            self.bt1.config (relief=RAISED)
+            self.bt2.config (relief=SUNKEN)
+            self.bt3.config (relief=RAISED)
+            self.bt3.config (state="disabled")
+        elif n==3:
+            self.c.unbind ("<Button-1>")
+            self.dNdMode()
+            self.bt1.config (relief=RAISED)
+            self.bt2.config (relief=RAISED)
+            self.bt3.config (relief=SUNKEN)
+            self.bt2.config (state="disabled")
 
-
-def StartGUI(answer=None, next=None, skip=None, open=None, save=None):
-    """
-    The entry point to the MainWindow
-    Creates a window (tkinter)
-    And MainFrame on top of it
-    Then register Listeners for MainFram
-    Finally stats the loop of events
-    :param answer, next, skip open, save are all listeners
-    """
-    root=Tk()
-    root.title('Тестування для ліцеїстів')
-    root.geometry('1000x550+150+150')
-    main_frame=MainFrame(root)
-    main_frame.RegisterListener(answer, next, skip, open, save)
-    mainloop()
 
 
 if __name__=='__main__':
