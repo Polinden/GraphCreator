@@ -4,6 +4,7 @@ import textwrap
 import os
 from math import *
 from tkinter import simpledialog
+import pickle
 
 
 class Graph:
@@ -15,7 +16,6 @@ class Graph:
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
             return None
         n = len (self.al.keys ()) + 1
-        #LOOK HERE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         while n in self.bn:
             n+=1
         self.bn.add(n)
@@ -38,12 +38,6 @@ class Graph:
             v.number = nv
             return v
 
-    def deleteVertice(self, v):
-        self.bn.remove(v.number)
-        #TODO kill all edges!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        del self.al[v]
-
-
     def addEdge(self, v1, v2):
         e = Edge (v1, v2)
         self.al[v1].append (e)
@@ -53,8 +47,32 @@ class Graph:
         self.al.clear()
         self.bn.clear()
 
+    def deleteVertice (self, v, canvas):
+        for el in self.al.values():
+            for e in [e for e in el if e.v1 == v or e.v2 == v]:
+                e.eraseMe(canvas)
+                el.remove(e)
+        v.eraseMe(canvas)
+        self.bn.remove(v.number)
+        del self.al[v]
+        #print('V', len(self.al.keys()))
+        #print ('E', len ([e for el in self.al.values() for e in el]))
+
+
+
+
+    def deleteEdges (self, v, canvas):
+        for el in self.al.values():
+            for e in [e for e in el if e.v1 == v or e.v2 == v]:
+                e.eraseMe(canvas)
+                el.remove(e)
+
+
+
+
 
 class Vertice:
+
     radius = 25
     width = 4
     color = 'blue'
@@ -65,20 +83,23 @@ class Vertice:
         self.text, self.circle = None, None
 
     def draw(self, canvas):
-        self.killMe(canvas)
+        self.eraseMe(canvas)
         self.circle = canvas.create_oval (self.x - Vertice.radius, self.y - Vertice.radius, self.x + Vertice.radius,
                                           self.y + Vertice.radius, outline=Vertice.color, width=Vertice.width)
         self.text = canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str (self.number))
 
-    def killMe(self, canvas):
+    def eraseMe(self, canvas):
         if self.text:
             canvas.delete (self.text)
         if self.circle:
             canvas.delete (self.circle)
 
     def getTouchPoint(self, xt, yt):
-        t = (yt - self.y) / (xt - self.x)
-        a = atan (t)
+        if xt == self.x:
+            a = 1.5708 if yt>self.y else -1.5708
+        else:
+            t = (yt - self.y) / (xt - self.x)
+            a = atan (t)
         k = 1
         if xt < self.x:
             k = -1
@@ -115,14 +136,14 @@ class Edge:
         self.line=None
 
     def draw(self, canvas):
-        self.killMe(canvas)
+        self.eraseMe(canvas)
         x1, y1 = self.v1.getTouchPoint (self.v2.x, self.v2.y)
         x2, y2 = self.v2.getTouchPoint (self.v1.x, self.v1.y)
         self.line = canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
 
-    def killMe(self, canvas):
+    def eraseMe(self, canvas):
         if self.line:
-            canvas.delete (self.line)
+            canvas.delete(self.line)
 
 
 
@@ -142,7 +163,7 @@ class MainFrame (Frame):
         self.dragX = 0
         self.dragY = 0
         self.lineDraging = None
-        self.graph = Graph ()
+        self.graph = Graph()
 
     def createFrames(self):
         tb = Frame (self, bd=1, relief=SUNKEN)
@@ -174,7 +195,7 @@ class MainFrame (Frame):
     def createPopUpMenu(self, root):
         self.popup = Menu (root, tearoff=0)
         self.popup.add_command (label="Видалити вершину", command=self.removeVrMenu)
-        self.popup.add_command (label="Видалити ребра")
+        self.popup.add_command (label="Видалити ребра", command=self.removeEdMenu)
         self.popup.add_separator ()
         self.popup.add_command (label="Перейменувати", command=self.renameVrMenu)
 
@@ -191,9 +212,10 @@ class MainFrame (Frame):
                 v.draw (self.c)
 
     def removeVrMenu(self):
-        self.curv.killMe (self.c)
-        self.graph.deleteVertice(self.curv)
+        self.graph.deleteVertice(self.curv, self.c)
 
+    def removeEdMenu(self):
+        self.graph.deleteEdges(self.curv,self.c)
 
     def addVertice(self, event):
         v = self.graph.addVertice (event.x, event.y)
@@ -228,6 +250,9 @@ class MainFrame (Frame):
                 e.draw (self.c)
 
     def switchButtons(self, n):
+        if n: self.graphmenu.entryconfig("Запамʼятати граф", state="normal")
+        else: self.graphmenu.entryconfig("Запамʼятати граф", state="disabled")
+
         if n == 1:
             self.dNdMode (False)
             self.c.bind ("<Button-1>", self.addVertice)
@@ -248,6 +273,14 @@ class MainFrame (Frame):
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=SUNKEN)
             self.bt2.config (state="disabled")
+        elif n == 0:
+            self.c.unbind ("<Button-1>")
+            self.dNdMode (False)
+            self.bt1.config (relief=RAISED)
+            self.bt2.config (relief=RAISED)
+            self.bt3.config (relief=RAISED)
+            self.bt2.config (state="normal")
+            self.bt3.config (state="normal")
 
     def createMainMenu(self, root):
         # basement
@@ -268,17 +301,19 @@ class MainFrame (Frame):
     def clearGraphMenu(self):
         self.c.delete('all')
         self.graph.clean ()
+        self.switchButtons(0)
+
 
     def saveFileMenu(self):
-        file = fdialog.asksaveasfile (filetypes=[('Txt files', '.txt')], title='Обрати файл з результатом')
+        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Txt files', '.txt')], title='Обрати файл з результатом')
         if file:
             with file:
-                pass
+                pickle.dump(self.graph, file)
 
-    def allRowColFlexible(self, *frames):
+    def allRowColFlexible(self):
         self.root.columnconfigure (0, weight=1)
         self.root.rowconfigure (0, weight=1)
-        self.grid (row=0, column=0, sticky=(N, S, W, E))
+        self.grid (row=0, column=0, sticky=(N,S,W,E))
         self.grid_rowconfigure (0, weight=1)
         self.grid_columnconfigure (0, weight=0)
         self.grid_columnconfigure (1, weight=1)
