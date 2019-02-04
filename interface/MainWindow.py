@@ -1,16 +1,17 @@
 from tkinter import *
 import tkinter.filedialog as fdialog
-import textwrap
-import os
-from math import *
 from tkinter import simpledialog
+import textwrap
+from math import *
 import pickle
+import os
 
 
 class Graph:
     def __init__(self):
         self.al = {}
         self.bn = set()
+        self.directed=None
 
     def addVertice(self, x, y):
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
@@ -49,25 +50,36 @@ class Graph:
 
     def deleteVertice (self, v, canvas):
         for el in self.al.values():
-            for e in [e for e in el if e.v1 == v or e.v2 == v]:
-                e.eraseMe(canvas)
-                el.remove(e)
-        v.eraseMe(canvas)
+            for ev in [et for et in el if et.v1 == v or et.v2 == v]:
+                ev.erase(canvas)
+                el.remove(ev)
+        v.erase(canvas)
         self.bn.remove(v.number)
         del self.al[v]
         #print('V', len(self.al.keys()))
         #print ('E', len ([e for el in self.al.values() for e in el]))
 
-
-
+    def drawAllGraph(self, canvas):
+        for v, el in self.al.items():
+            v.draw(canvas)
+            for e in el:
+                e.draw(canvas)
 
     def deleteEdges (self, v, canvas):
         for el in self.al.values():
             for e in [e for e in el if e.v1 == v or e.v2 == v]:
-                e.eraseMe(canvas)
+                e.erase(canvas)
                 el.remove(e)
 
-
+    def __repr__(self):
+        lb=os.linesep
+        if not self.al: return 'None'
+        s1='{}{}{}'.format('graph mygraph ' if self.directed else 'digraph mygraph ', '{', lb)
+        s2=(';'+lb).join([str(v) for v in self.al.keys()])
+        s2='{}{}{}'.format(s2, ';' if s2 else '', lb)
+        s3=(';'+lb).join([str(e) for el in self.al.values() for e in el])
+        s3 = '{}{}{}'.format (s3, ';'+lb if s3 else '', '}')
+        return s1+s2+s3
 
 
 
@@ -83,16 +95,17 @@ class Vertice:
         self.text, self.circle = None, None
 
     def draw(self, canvas):
-        self.eraseMe(canvas)
         self.circle = canvas.create_oval (self.x - Vertice.radius, self.y - Vertice.radius, self.x + Vertice.radius,
                                           self.y + Vertice.radius, outline=Vertice.color, width=Vertice.width)
         self.text = canvas.create_text (self.x, self.y, font=Vertice.font, fill="black", text=str (self.number))
 
-    def eraseMe(self, canvas):
-        if self.text:
-            canvas.delete (self.text)
-        if self.circle:
-            canvas.delete (self.circle)
+    def redraw(self, canvas):
+        self.erase(canvas)
+        self.draw (canvas)
+
+    def erase(self, canvas):
+        if self.text: canvas.delete(self.text)
+        if self.circle: canvas.delete(self.circle)
 
     def getTouchPoint(self, xt, yt):
         if xt == self.x:
@@ -126,6 +139,9 @@ class Vertice:
     def __eq__(self, other):
         return self.x == other.x and self.y == other.y
 
+    def __repr__(self):
+        return "{}".format(self.number)
+
 
 class Edge:
     width = 4
@@ -136,15 +152,19 @@ class Edge:
         self.line=None
 
     def draw(self, canvas):
-        self.eraseMe(canvas)
-        x1, y1 = self.v1.getTouchPoint (self.v2.x, self.v2.y)
-        x2, y2 = self.v2.getTouchPoint (self.v1.x, self.v1.y)
-        self.line = canvas.create_line (x1, y1, x2, y2, fill=Edge.color, width=Edge.width)
+        self.x1tp, self.y1tp = self.v1.getTouchPoint (self.v2.x, self.v2.y)
+        self.x2tp, self.y2tp = self.v2.getTouchPoint (self.v1.x, self.v1.y)
+        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=Edge.color, width=Edge.width)
 
-    def eraseMe(self, canvas):
-        if self.line:
-            canvas.delete(self.line)
+    def redraw(self, canvas):
+        self.erase (canvas)
+        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=Edge.color, width=Edge.width)
 
+    def erase(self, canvas):
+        if self.line: canvas.delete(self.line)
+
+    def __repr__(self):
+        return '{}--{}'.format(self.v1, self.v2)
 
 
 
@@ -175,8 +195,8 @@ class MainFrame (Frame):
     def fillToolbar(self):
         path = os.path.dirname (os.path.abspath (__file__))
         self.photo1 = PhotoImage (file=os.path.join (path, "img/circle.png"))
-        self.photo2 = PhotoImage (file=os.path.join (path, "img/edge.png"))
-        self.photo3 = PhotoImage (file=os.path.join (path, "img/line.png"))
+        self.photo2 = PhotoImage (file=os.path.join (path, "img/line.png"))
+        self.photo3 = PhotoImage (file=os.path.join (path, "img/edge.png"))
         self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60,
                            command=lambda: self.switchButtons (1))
         self.bt1.grid (column=0, row=0, sticky=(N, W, E))
@@ -205,11 +225,11 @@ class MainFrame (Frame):
             self.popup.tk_popup (event.x_root, event.y_root)
 
     def renameVrMenu(self):
-        nv = simpledialog.askinteger ("Номер", "Введіть новий номер", parent=self.root, minvalue=0, maxvalue=100)
+        nv = simpledialog.askinteger ("Номер", "Введіть новий номер", parent=self.root, minvalue=0, maxvalue=1000)
         if nv:
             v = self.graph.renameVertice (self.curv, nv)
             if v:
-                v.draw (self.c)
+                v.redraw (self.c)
 
     def removeVrMenu(self):
         self.graph.deleteVertice(self.curv, self.c)
@@ -250,9 +270,6 @@ class MainFrame (Frame):
                 e.draw (self.c)
 
     def switchButtons(self, n):
-        if n: self.graphmenu.entryconfig("Запамʼятати граф", state="normal")
-        else: self.graphmenu.entryconfig("Запамʼятати граф", state="disabled")
-
         if n == 1:
             self.dNdMode (False)
             self.c.bind ("<Button-1>", self.addVertice)
@@ -266,6 +283,7 @@ class MainFrame (Frame):
             self.bt2.config (relief=SUNKEN)
             self.bt3.config (relief=RAISED)
             self.bt3.config (state="disabled")
+            self.graph.directed=True
         elif n == 3:
             self.c.unbind ("<Button-1>")
             self.dNdMode ()
@@ -273,6 +291,7 @@ class MainFrame (Frame):
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=SUNKEN)
             self.bt2.config (state="disabled")
+            self.graph.directed = False
         elif n == 0:
             self.c.unbind ("<Button-1>")
             self.dNdMode (False)
@@ -292,8 +311,11 @@ class MainFrame (Frame):
         menu.add_cascade (label='Граф', menu=self.graphmenu)
         menu.add_cascade (label='Про програму', menu=aboutmenu)
         self.graphmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
-        self.graphmenu.add_command (label='Запамʼятати граф', command=self.saveFileMenu, state=DISABLED)
-        self.graphmenu.add_command (label='Завантажити граф')
+        self.graphmenu.add_command (label='Завантажити граф', command=self.openFileMenu)
+        self.graphmenu.add_separator()
+        self.graphmenu.add_command (label='Зберiгти граф', command=self.saveFileMenu)
+        self.graphmenu.add_command (label='Зберiгти у форматi DOT', command=self.saveDOTMenu)
+        self.graphmenu.add_separator ()
         self.graphmenu.add_command (label='Вихід', command=root.quit)
         aboutmenu.add_command (label='Інформація', command=self.infoDialog)
         root.config (menu=menu)
@@ -305,10 +327,31 @@ class MainFrame (Frame):
 
 
     def saveFileMenu(self):
-        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Txt files', '.txt')], title='Обрати файл з результатом')
+        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Txt files', '.txt')], title='Обрати файл')
+        if file:
+            try:
+                pickle.dump(self.graph, file)
+                print(self.graph)
+            except:
+                file.close ()
+
+    def saveDOTMenu(self):
+        file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
+        if file:
+            try:
+                pass
+                file.write('{}'.format(self.graph))
+            except:
+                file.close ()
+
+    def openFileMenu(self):
+        file = fdialog.askopenfile (mode='rb', filetypes=[('Txt files', '.txt')],  title='Обрати файл')
         if file:
             with file:
-                pickle.dump(self.graph, file)
+                self.graph=pickle.load (file)
+                self.c.delete('all')
+                self.graph.drawAllGraph(self.c)
+                self.switchButtons(2 if self.graph.directed else 3)
 
     def allRowColFlexible(self):
         self.root.columnconfigure (0, weight=1)
@@ -346,7 +389,7 @@ class MainFrame (Frame):
 
 if __name__ == '__main__':
     window = Tk ()
-    window.title ("Welcome to Graph creator")
+    window.title ("Дослiдник Графiв")
     MainFrame (window)
     window.geometry ('1200x800')
     window.mainloop ()
