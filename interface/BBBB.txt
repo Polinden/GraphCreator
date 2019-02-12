@@ -1,4 +1,0 @@
-digraph mygraph {
-1;
-2;
-}

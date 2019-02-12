@@ -1,9 +1,11 @@
 from tkinter import *
 import tkinter.filedialog as fdialog
+import tkinter.messagebox as mbx
 from tkinter import simpledialog
 import textwrap
 from math import *
 import pickle
+import time
 import os
 
 
@@ -12,6 +14,7 @@ class Graph:
         self.al = {}
         self.bn = set()
         self.directed=None
+        self._allEges=None
 
     def addVertice(self, x, y):
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
@@ -40,24 +43,21 @@ class Graph:
             return v
 
     def addEdge(self, v1, v2):
-        e = Edge (v1, v2)
-        self.al[v1].append (e)
+        if self.ifConnected(v1, v2): return None
+        e = DirectedEdge(v1, v2) if self.directed else Edge(v1, v2)
+        self.al[v1].append(e)
+        self.allEdges.add(e)
         return e
 
     def clean(self):
         self.al.clear()
         self.bn.clear()
 
-    def deleteVertice (self, v, canvas):
-        for el in self.al.values():
-            for ev in [et for et in el if et.v1 == v or et.v2 == v]:
-                ev.erase(canvas)
-                el.remove(ev)
+    def deleteVertice(self, v, canvas):
+        self.deleteEdges(v, canvas)
         v.erase(canvas)
         self.bn.remove(v.number)
         del self.al[v]
-        #print('V', len(self.al.keys()))
-        #print ('E', len ([e for el in self.al.values() for e in el]))
 
     def drawAllGraph(self, canvas):
         for v, el in self.al.items():
@@ -65,11 +65,35 @@ class Graph:
             for e in el:
                 e.draw(canvas)
 
-    def deleteEdges (self, v, canvas):
+    def deleteEdges(self, v, canvas):
         for el in self.al.values():
             for e in [e for e in el if e.v1 == v or e.v2 == v]:
                 e.erase(canvas)
+                self.allEdges.remove(e)
                 el.remove(e)
+
+    @property
+    def allEdges(self):
+        if not self._allEges: self._allEges = set(e for el in self.al.values() for e in el)
+        return self._allEges
+
+
+    def ifConnected(self, v1, v2):
+        return any(e for e in self.allEdges if (e.v1==v1 and e.v2==v2) or (e.v2==v1 and e.v1==v2))
+
+
+    def animatePath(self, canvas, path=None):
+        if not path: return
+        if not isinstance(path[0], Vertice):
+            path = [v for p in path for v in self.al.keys() if v.number==p]
+        vz = zip(path[:-1], path[1:])
+        for v1, v2 in vz:
+            for e in self.allEdges:
+                if e.v1==v1 and e.v2==v2:
+                    time.sleep(0.7)
+                    e.changeColor(canvas)
+                    canvas.update()
+
 
     def __repr__(self):
         lb=os.linesep
@@ -84,7 +108,6 @@ class Graph:
 
 
 class Vertice:
-
     radius = 25
     width = 4
     color = 'blue'
@@ -146,26 +169,41 @@ class Vertice:
 class Edge:
     width = 4
     color = 'black'
+    altcolor='red'
 
     def __init__(self, v1, v2):
         self.v1, self.v2 = v1, v2
         self.line=None
+        self.color = Edge.color
 
     def draw(self, canvas):
         self.x1tp, self.y1tp = self.v1.getTouchPoint (self.v2.x, self.v2.y)
         self.x2tp, self.y2tp = self.v2.getTouchPoint (self.v1.x, self.v1.y)
-        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=Edge.color, width=Edge.width)
+        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=self.color, width=Edge.width)
 
     def redraw(self, canvas):
         self.erase (canvas)
-        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=Edge.color, width=Edge.width)
+        self.draw(canvas)
 
     def erase(self, canvas):
         if self.line: canvas.delete(self.line)
 
+    def changeColor(self, canvas):
+        self.color = Edge.altcolor if self.color == Edge.color else Edge.color
+        canvas.itemconfig(self.line, fill=self.color)
+
     def __repr__(self):
         return '{}--{}'.format(self.v1, self.v2)
 
+
+class DirectedEdge(Edge):
+    def draw(self, canvas):
+        self.x1tp, self.y1tp = self.v1.getTouchPoint (self.v2.x, self.v2.y)
+        self.x2tp, self.y2tp = self.v2.getTouchPoint (self.v1.x, self.v1.y)
+        self.line = canvas.create_line (self.x1tp, self.y1tp, self.x2tp, self.y2tp, fill=self.color, width=Edge.width, arrow=LAST)
+
+    def __repr__(self):
+        return '{}->{}'.format(self.v1, self.v2)
 
 
 class MainFrame (Frame):
@@ -283,7 +321,7 @@ class MainFrame (Frame):
             self.bt2.config (relief=SUNKEN)
             self.bt3.config (relief=RAISED)
             self.bt3.config (state="disabled")
-            self.graph.directed=True
+            self.graph.directed = False
         elif n == 3:
             self.c.unbind ("<Button-1>")
             self.dNdMode ()
@@ -291,7 +329,7 @@ class MainFrame (Frame):
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=SUNKEN)
             self.bt2.config (state="disabled")
-            self.graph.directed = False
+            self.graph.directed = True
         elif n == 0:
             self.c.unbind ("<Button-1>")
             self.dNdMode (False)
@@ -305,18 +343,24 @@ class MainFrame (Frame):
         # basement
         menu = Menu(root)
         # first level
-        self.graphmenu = Menu(menu, tearoff=0)
+        graphmenu = Menu(menu, tearoff=0)
         aboutmenu = Menu(menu, tearoff=0)
+        algmenu = Menu(menu, tearoff=0)
         # second level
-        menu.add_cascade (label='Граф', menu=self.graphmenu)
+        menu.add_cascade (label='Граф', menu=graphmenu)
+        menu.add_cascade(label='Алгоритмы', menu=algmenu)
         menu.add_cascade (label='Про програму', menu=aboutmenu)
-        self.graphmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
-        self.graphmenu.add_command (label='Завантажити граф', command=self.openFileMenu)
-        self.graphmenu.add_separator()
-        self.graphmenu.add_command (label='Зберiгти граф', command=self.saveFileMenu)
-        self.graphmenu.add_command (label='Зберiгти у форматi DOT', command=self.saveDOTMenu)
-        self.graphmenu.add_separator ()
-        self.graphmenu.add_command (label='Вихід', command=root.quit)
+        graphmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
+        graphmenu.add_command (label='Завантажити граф', command=self.openFileMenu)
+        graphmenu.add_separator()
+        graphmenu.add_command (label='Зберiгти граф', command=self.saveFileMenu)
+        graphmenu.add_command (label='Зберiгти у форматi DOT', command=self.saveDOTMenu)
+        graphmenu.add_separator ()
+        graphmenu.add_command (label='Вихід', command=root.quit)
+        algmenu.add_command(label='Тест анимации', command=self.testAnimate)
+        algmenu.add_command(label='В глубину', command=self.testAnimate)
+        algmenu.add_command(label='В ширину', command=self.testAnimate)
+        algmenu.add_command(label='Кратчайший путь', command=self.testAnimate)
         aboutmenu.add_command (label='Інформація', command=self.infoDialog)
         root.config (menu=menu)
 
@@ -327,13 +371,14 @@ class MainFrame (Frame):
 
 
     def saveFileMenu(self):
-        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Txt files', '.txt')], title='Обрати файл')
+        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Graph files', '.gra')], title='Обрати файл')
         if file:
             try:
                 pickle.dump(self.graph, file)
-                print(self.graph)
+                #print(self.graph)
             except:
-                file.close ()
+                file.close()
+                mbx.showerror("Увага!", "Помилка збереження графу")
 
     def saveDOTMenu(self):
         file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
@@ -342,16 +387,20 @@ class MainFrame (Frame):
                 pass
                 file.write('{}'.format(self.graph))
             except:
-                file.close ()
+                file.close()
+                mbx.showerror("Увага!", "Помилка збереження графу")
 
     def openFileMenu(self):
-        file = fdialog.askopenfile (mode='rb', filetypes=[('Txt files', '.txt')],  title='Обрати файл')
+        file = fdialog.askopenfile (mode='rb', filetypes=[('Graph files', '.gra')],  title='Обрати файл')
         if file:
-            with file:
+            try:
                 self.graph=pickle.load (file)
                 self.c.delete('all')
                 self.graph.drawAllGraph(self.c)
                 self.switchButtons(2 if self.graph.directed else 3)
+            except:
+                file.close()
+                mbx.showerror("Увага!", "Помилка завантаження графу")
 
     def allRowColFlexible(self):
         self.root.columnconfigure (0, weight=1)
@@ -383,7 +432,8 @@ class MainFrame (Frame):
 
 
 
-
+    def testAnimate(self):
+        self.graph.animatePath(self.c, range(99))
 
 
 
