@@ -14,7 +14,6 @@ class Graph:
         self.al = {}
         self.bn = set()
         self.directed=None
-        self._allEges=None
 
     def addVertice(self, x, y):
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
@@ -74,11 +73,13 @@ class Graph:
 
     @property
     def allEdges(self):
-        if not self._allEges: self._allEges = set(e for el in self.al.values() for e in el)
+        if not hasattr(self, '_allEges'): self._allEges = set(e for el in self.al.values() for e in el)
         return self._allEges
 
 
     def ifConnected(self, v1, v2):
+        if self.directed:
+            return any(e for e in self.allEdges if (e.v1==v1 and e.v2==v2))
         return any(e for e in self.allEdges if (e.v1==v1 and e.v2==v2) or (e.v2==v1 and e.v1==v2))
 
 
