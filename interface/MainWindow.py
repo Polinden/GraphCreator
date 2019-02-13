@@ -14,6 +14,7 @@ class Graph:
         self.al = {}
         self.bn = set()
         self.directed=None
+        self._allEdges=None
 
     def addVertice(self, x, y):
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
@@ -51,12 +52,15 @@ class Graph:
     def clean(self):
         self.al.clear()
         self.bn.clear()
+        self._allEdges=None
+
 
     def deleteVertice(self, v, canvas):
         self.deleteEdges(v, canvas)
         v.erase(canvas)
         self.bn.remove(v.number)
         del self.al[v]
+
 
     def drawAllGraph(self, canvas):
         for v, el in self.al.items():
@@ -73,14 +77,20 @@ class Graph:
 
     @property
     def allEdges(self):
-        if not hasattr(self, '_allEges'): self._allEges = set(e for el in self.al.values() for e in el)
-        return self._allEges
+        if not self._allEdges: self._allEdges = set(e for el in self.al.values() for e in el)
+        return self._allEdges
 
 
-    def ifConnected(self, v1, v2):
-        if self.directed:
-            return any(e for e in self.allEdges if (e.v1==v1 and e.v2==v2))
-        return any(e for e in self.allEdges if (e.v1==v1 and e.v2==v2) or (e.v2==v1 and e.v1==v2))
+    def connected(self, v1, v2):
+        return (e for e in self.allEdges if self.testConnection(e, v1, v2))
+
+
+    def ifConnected(self, v1,v2):
+        return any(self.connected(v1, v2))
+
+
+    def testConnection(self, e, v1, v2):
+        return e.v1==v1 and e.v2==v2 if self.directed else (e.v1==v1 and e.v2==v2) or (e.v1==v2 and e.v2==v1)
 
 
     def animatePath(self, canvas, path=None):
@@ -88,18 +98,21 @@ class Graph:
         if not isinstance(path[0], Vertice):
             path = [v for p in path for v in self.al.keys() if v.number==p]
         vz = zip(path[:-1], path[1:])
-        for v1, v2 in vz:
-            for e in self.allEdges:
-                if e.v1==v1 and e.v2==v2:
+        for e in (el for v1,v2 in vz for el in self.connected(v1,v2)):
                     time.sleep(0.7)
                     e.changeColor(canvas)
                     canvas.update()
 
 
+    def __getstate__(self):
+        self.__dict__['_allEdges']=None
+        return self.__dict__
+
+
     def __repr__(self):
         lb=os.linesep
         if not self.al: return 'None'
-        s1='{}{}{}'.format('graph mygraph ' if self.directed else 'digraph mygraph ', '{', lb)
+        s1='{}{}{}'.format('digraph mygraph ' if self.directed else 'graph mygraph ', '{', lb)
         s2=(';'+lb).join([str(v) for v in self.al.keys()])
         s2='{}{}{}'.format(s2, ';' if s2 else '', lb)
         s3=(';'+lb).join([str(e) for el in self.al.values() for e in el])
@@ -157,6 +170,12 @@ class Vertice:
             return False
         return True
 
+    def __getstate__(self):
+        d=self.__dict__
+        del d['text']
+        del d['circle']
+        return d
+
     def __hash__(self):
         return hash ((self.x, self.y))
 
@@ -174,8 +193,8 @@ class Edge:
 
     def __init__(self, v1, v2):
         self.v1, self.v2 = v1, v2
-        self.line=None
         self.color = Edge.color
+        self.line=None
 
     def draw(self, canvas):
         self.x1tp, self.y1tp = self.v1.getTouchPoint (self.v2.x, self.v2.y)
@@ -192,6 +211,12 @@ class Edge:
     def changeColor(self, canvas):
         self.color = Edge.altcolor if self.color == Edge.color else Edge.color
         canvas.itemconfig(self.line, fill=self.color)
+
+    def __getstate__(self):
+        d=self.__dict__
+        del d['line']
+        d['color']=Edge.color
+        return d
 
     def __repr__(self):
         return '{}--{}'.format(self.v1, self.v2)
@@ -234,8 +259,8 @@ class MainFrame (Frame):
     def fillToolbar(self):
         path = os.path.dirname (os.path.abspath (__file__))
         self.photo1 = PhotoImage (file=os.path.join (path, "img/circle.png"))
-        self.photo2 = PhotoImage (file=os.path.join (path, "img/line.png"))
-        self.photo3 = PhotoImage (file=os.path.join (path, "img/edge.png"))
+        self.photo2 = PhotoImage (file=os.path.join (path, "img/edge.png"))
+        self.photo3 = PhotoImage (file=os.path.join (path, "img/line.png"))
         self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60,
                            command=lambda: self.switchButtons (1))
         self.bt1.grid (column=0, row=0, sticky=(N, W, E))
@@ -246,10 +271,12 @@ class MainFrame (Frame):
                            command=lambda: self.switchButtons (3))
         self.bt3.grid (column=0, row=2, sticky=(N, W, E))
 
+
     def fillWorkTable(self):
         self.c = Canvas (self.frames['graph'])
         self.c.grid (row=0, column=0, sticky=(N, S, W, E))
         self.c.bind ('<Button-3>', self.popupMenu)
+        self.c.bind ('<Button-2>', self.popupMenu)
 
     def createPopUpMenu(self, root):
         self.popup = Menu (root, tearoff=0)
@@ -315,22 +342,26 @@ class MainFrame (Frame):
             self.bt1.config (relief=SUNKEN)
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=RAISED)
+            self.c['cursor']='circle'
         elif n == 2:
             self.c.unbind ("<Button-1>")
+            self.c['cursor']='tcross'
             self.dNdMode ()
             self.bt1.config (relief=RAISED)
             self.bt2.config (relief=SUNKEN)
             self.bt3.config (relief=RAISED)
             self.bt3.config (state="disabled")
-            self.graph.directed = False
+            self.graph.directed = True
         elif n == 3:
             self.c.unbind ("<Button-1>")
+            self.c['cursor']='tcross'
             self.dNdMode ()
             self.bt1.config (relief=RAISED)
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=SUNKEN)
             self.bt2.config (state="disabled")
-            self.graph.directed = True
+            self.graph.directed = False
+            self.c['cursor']='cross'
         elif n == 0:
             self.c.unbind ("<Button-1>")
             self.dNdMode (False)
@@ -339,6 +370,7 @@ class MainFrame (Frame):
             self.bt3.config (relief=RAISED)
             self.bt2.config (state="normal")
             self.bt3.config (state="normal")
+
 
     def createMainMenu(self, root):
         # basement
@@ -376,7 +408,6 @@ class MainFrame (Frame):
         if file:
             try:
                 pickle.dump(self.graph, file)
-                #print(self.graph)
             except:
                 file.close()
                 mbx.showerror("Увага!", "Помилка збереження графу")
