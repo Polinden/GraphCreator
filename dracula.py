@@ -1,0 +1,13 @@
+from interface.guishell import startGUI
+from algirithm.graph import *
+
+
+def test():
+    print('works')
+
+startGUI(test, test, test)
+
+
+
+
+

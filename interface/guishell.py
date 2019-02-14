@@ -43,7 +43,7 @@ class Graph:
             return v
 
     def addEdge(self, v1, v2):
-        if self.ifConnected(v1, v2): return None
+        if self.connected(v1, v2): return None
         e = DirectedEdge(v1, v2) if self.directed else Edge(v1, v2)
         self.al[v1].append(e)
         self.allEdges.add(e)
@@ -62,7 +62,7 @@ class Graph:
         del self.al[v]
 
 
-    def drawAllGraph(self, canvas):
+    def  drawAllGraph(self, canvas):
         for v, el in self.al.items():
             v.draw(canvas)
             for e in el:
@@ -82,11 +82,10 @@ class Graph:
 
 
     def connected(self, v1, v2):
-        return (e for e in self.allEdges if self.testConnection(e, v1, v2))
-
-
-    def ifConnected(self, v1,v2):
-        return any(self.connected(v1, v2))
+        for e in self.allEdges:
+            if self.testConnection(e,v1,v2):
+                return e
+        return None
 
 
     def testConnection(self, e, v1, v2):
@@ -95,13 +94,16 @@ class Graph:
 
     def animatePath(self, canvas, path=None):
         if not path: return
+        crs=canvas['cursor']
+        canvas['cursor']='watch'
         if not isinstance(path[0], Vertice):
             path = [v for p in path for v in self.al.keys() if v.number==p]
         vz = zip(path[:-1], path[1:])
-        for e in (el for v1,v2 in vz for el in self.connected(v1,v2)):
+        for e in filter(lambda x: x, (self.connected(*vt) for vt in vz)):
                     time.sleep(0.7)
                     e.changeColor(canvas)
                     canvas.update()
+        canvas['cursor'] = crs
 
 
     def __getstate__(self):
@@ -171,7 +173,7 @@ class Vertice:
         return True
 
     def __getstate__(self):
-        d=self.__dict__
+        d=self.__dict__.copy()
         del d['text']
         del d['circle']
         return d
@@ -213,7 +215,7 @@ class Edge:
         canvas.itemconfig(self.line, fill=self.color)
 
     def __getstate__(self):
-        d=self.__dict__
+        d=self.__dict__.copy()
         del d['line']
         d['color']=Edge.color
         return d
@@ -342,10 +344,10 @@ class MainFrame (Frame):
             self.bt1.config (relief=SUNKEN)
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=RAISED)
-            self.c['cursor']='circle'
+            self.c['cursor']='cross'
         elif n == 2:
             self.c.unbind ("<Button-1>")
-            self.c['cursor']='tcross'
+            self.c['cursor']='arrow'
             self.dNdMode ()
             self.bt1.config (relief=RAISED)
             self.bt2.config (relief=SUNKEN)
@@ -354,14 +356,13 @@ class MainFrame (Frame):
             self.graph.directed = True
         elif n == 3:
             self.c.unbind ("<Button-1>")
-            self.c['cursor']='tcross'
+            self.c['cursor']='arrow'
             self.dNdMode ()
             self.bt1.config (relief=RAISED)
             self.bt2.config (relief=RAISED)
             self.bt3.config (relief=SUNKEN)
             self.bt2.config (state="disabled")
             self.graph.directed = False
-            self.c['cursor']='cross'
         elif n == 0:
             self.c.unbind ("<Button-1>")
             self.dNdMode (False)
@@ -370,6 +371,7 @@ class MainFrame (Frame):
             self.bt3.config (relief=RAISED)
             self.bt2.config (state="normal")
             self.bt3.config (state="normal")
+            self.c['cursor'] = 'cross'
 
 
     def createMainMenu(self, root):
@@ -391,9 +393,9 @@ class MainFrame (Frame):
         graphmenu.add_separator ()
         graphmenu.add_command (label='Вихід', command=root.quit)
         algmenu.add_command(label='Тест анимации', command=self.testAnimate)
-        algmenu.add_command(label='В глубину', command=self.testAnimate)
-        algmenu.add_command(label='В ширину', command=self.testAnimate)
-        algmenu.add_command(label='Кратчайший путь', command=self.testAnimate)
+        algmenu.add_command(label='В глубину', command=self.onDFS)
+        algmenu.add_command(label='В ширину', command=self.onBFS)
+        algmenu.add_command(label='Кратчайший путь', command=self.onSPS)
         aboutmenu.add_command (label='Інформація', command=self.infoDialog)
         root.config (menu=menu)
 
@@ -416,7 +418,6 @@ class MainFrame (Frame):
         file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
         if file:
             try:
-                pass
                 file.write('{}'.format(self.graph))
             except:
                 file.close()
@@ -433,6 +434,23 @@ class MainFrame (Frame):
             except:
                 file.close()
                 mbx.showerror("Увага!", "Помилка завантаження графу")
+
+
+    def onBFS(self):
+        if hasattr(self, 'lst1'):
+            self.lst1()
+
+
+    def onDFS(self):
+        if hasattr(self, 'lst2'):
+            self.lst2()
+
+
+    def onSPS(self):
+        if hasattr(self, 'lst3'):
+            self.lst3()
+
+
 
     def allRowColFlexible(self):
         self.root.columnconfigure (0, weight=1)
@@ -466,6 +484,15 @@ class MainFrame (Frame):
 
     def testAnimate(self):
         self.graph.animatePath(self.c, range(99))
+
+
+def startGUI(lst1=None, lst2=None, lst3=None):
+    window = Tk ()
+    window.title ("Дослiдник Графiв")
+    mf=MainFrame(window)
+    mf.lst1, mf.lst2, mf.lst3 = lst1, lst2, lst3
+    window.geometry ('1200x800')
+    window.mainloop ()
 
 
 
