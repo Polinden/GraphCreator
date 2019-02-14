@@ -5,7 +5,7 @@ from algirithm.graph import *
 def test():
     print('works')
 
-startGUI(test, test, test)
+startGUI(BFS, DFS, test)
 
 
 

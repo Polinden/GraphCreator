@@ -2,22 +2,22 @@ import collections
 
 
 
-def BFS(graph, root): 
-    visited, queue, result = set([root]), collections.deque([root]), collections.deque([(root,root)])
+def BFS(graph, root):
+    visited, queue, result = set([root]), collections.deque([root]), collections.deque()
     while queue: 
         v = queue.popleft()
-        for neighbour in graph[v]: 
-            if neighbour not in visited: 
-                visited.add(neighbour) 
+        for neighbour in graph[v]:
+            if neighbour not in visited:
+                visited.add(neighbour)
                 queue.append(neighbour)
-                result.append((v, neighbour)) 
+                result.append((v, neighbour))
     return result
 
 
 def DFSUtil(g, node, visited, result): 
     visited[node]= True
     for child in g[node]: 
-    	if visited[child] == False: 
+    	if not (child in visited) or visited[child] == False:
        	    result.append((node, child)) 
             DFSUtil(g, child, visited, result) 
     

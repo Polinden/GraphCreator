@@ -3,6 +3,7 @@ import tkinter.filedialog as fdialog
 import tkinter.messagebox as mbx
 from tkinter import simpledialog
 import textwrap
+import collections
 from math import *
 import pickle
 import time
@@ -15,6 +16,7 @@ class Graph:
         self.bn = set()
         self.directed=None
         self._allEdges=None
+
 
     def addVertice(self, x, y):
         if any (v.intersectMe (x, y) for v in self.al.keys ()):
@@ -62,7 +64,7 @@ class Graph:
         del self.al[v]
 
 
-    def  drawAllGraph(self, canvas):
+    def drawAllGraph(self, canvas):
         for v, el in self.al.items():
             v.draw(canvas)
             for e in el:
@@ -92,14 +94,25 @@ class Graph:
         return e.v1==v1 and e.v2==v2 if self.directed else (e.v1==v1 and e.v2==v2) or (e.v1==v2 and e.v2==v1)
 
 
+
+    def getClasicalAjacentLis(self):
+        d=collections.defaultdict(list)
+        for e in self.allEdges:
+            d[e.v1].append(e.v2)
+            if not self.directed:
+                d[e.v2].append(e.v1)
+        return d
+
+
     def animatePath(self, canvas, path=None):
         if not path: return
         crs=canvas['cursor']
         canvas['cursor']='watch'
-        if not isinstance(path[0], Vertice):
+        if not isinstance(path[0], tuple):
             path = [v for p in path for v in self.al.keys() if v.number==p]
-        vz = zip(path[:-1], path[1:])
-        for e in filter(lambda x: x, (self.connected(*vt) for vt in vz)):
+            path = zip(path[:-1], path[1:])
+        print(path)
+        for e in filter(lambda x: x, (self.connected(*vt) for vt in path)):
                     time.sleep(0.7)
                     e.changeColor(canvas)
                     canvas.update()
@@ -438,12 +451,18 @@ class MainFrame (Frame):
 
     def onBFS(self):
         if hasattr(self, 'lst1'):
-            self.lst1()
+            testFirst= list(self.graph.al.keys())[0]
+            print (testFirst)
+            path=self.lst1(self.graph.getClasicalAjacentLis(), testFirst)
+            self.graph.animatePath(self.c, path)
 
 
     def onDFS(self):
         if hasattr(self, 'lst2'):
-            self.lst2()
+            testFirst = list (self.graph.al.keys ())[0]
+            print(testFirst)
+            path=self.lst2(self.graph.getClasicalAjacentLis(), testFirst)
+            self.graph.animatePath (self.c, path)
 
 
     def onSPS(self):
