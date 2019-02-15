@@ -22,7 +22,7 @@ def DFSUtil(g, node, visited, result):
             DFSUtil(g, child, visited, result) 
     
 def DFS(graph, root): 
-        result=collections.deque([(root, root)])
+        result=collections.deque()
         visited = graph.fromkeys(graph, False)
         DFSUtil(graph, root, visited, result) 
         return result
