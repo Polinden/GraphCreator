@@ -305,10 +305,10 @@ class MainFrame (Frame):
 
     def fillToolbar(self):
         path = os.path.dirname (os.path.abspath (__file__))
-        self.photo0 = PhotoImage (file=os.path.join (path, "img/new.png"))
-        self.photo1 = PhotoImage (file=os.path.join (path, "img/circle.png"))
-        self.photo2 = PhotoImage (file=os.path.join (path, "img/edge.png"))
-        self.photo3 = PhotoImage (file=os.path.join (path, "img/line.png"))        
+        self.photo0 = PhotoImage (file=os.path.join (path, "img", "new.png"))
+        self.photo1 = PhotoImage (file=os.path.join (path, "img", "circle.png"))
+        self.photo2 = PhotoImage (file=os.path.join (path, "img", "edge.png"))
+        self.photo3 = PhotoImage (file=os.path.join (path, "img", "line.png"))        
         self.bt0 = Button (self.frames['toolbar'], image=self.photo0, height=60, width=60,
                            command=lambda: self.switchButtons (0))
         self.bt0.grid (column=0, row=0, sticky=(N, W, E))
