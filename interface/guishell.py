@@ -49,13 +49,13 @@ class Graph:
         if self.connected(v1, v2): return None
         e = DirectedEdge(v1, v2) if self.directed else Edge(v1, v2)
         self.al[v1].append(e)
-        self.allEdges.add(e)
+        self.allEdgesSimpleList.add(e)
         return e
 
     def clean(self):
         self.al.clear()
         self.bn.clear()
-        self._allEdges=None
+        self._allEdgesSimpleList=None
 
 
     def deleteVertice(self, v, canvas):
@@ -73,32 +73,34 @@ class Graph:
 
     def deleteEdges(self, v, canvas):
         for el in self.al.values():
-            for e in [e for e in el if e.v1 == v or e.v2 == v]:
+            for e in [e for e in el if self.testMyNeighbour(v, e)]:                
+                self.allEdgesSimpleList.remove(e)
                 e.erase(canvas)
-                self.allEdges.remove(e)
                 el.remove(e)
 
+    def testMyNeighbour(self, v, e):
+    	return (e.v2 == v and not self.directed) or e.v1 == v
+                
+
     @property
-    def allEdges(self):
+    def allEdgesSimpleList(self):
         if not self._allEdges: self._allEdges = set(e for el in self.al.values() for e in el)
         return self._allEdges
 
 
     def connected(self, v1, v2):
-        for e in self.allEdges:
+        for e in self.allEdgesSimpleList:
             if self.testConnection(e,v1,v2):
                 return e
         return None
-
 
     def testConnection(self, e, v1, v2):
         return e.v1==v1 and e.v2==v2 if self.directed else (e.v1==v1 and e.v2==v2) or (e.v1==v2 and e.v2==v1)
 
 
-
     def getClasicalAjacentLis(self):
         d=collections.defaultdict(list)
-        for e in self.allEdges:
+        for e in self.allEdgesSimpleList:
             d[e.v1].append(e.v2)
             if not self.directed:
                 d[e.v2].append(e.v1)
@@ -110,8 +112,8 @@ class Graph:
         self.root.changeColor(canvas)
 
 
-    def resetColors(self, canvas, withRoot=False):
-        for e in self.allEdges:
+    def resetColorsForAnimation(self, canvas, withRoot=False):
+        for e in self.allEdgesSimpleList:
             e.changeColor(canvas, True)
         for v in self.al.keys():
             if not v==self.root:
@@ -119,7 +121,6 @@ class Graph:
         if withRoot:
             self.root.changeColor(canvas, True)
             self.root=None
-
 
 
     def animatePath(self, canvas, path=None):
@@ -138,7 +139,7 @@ class Graph:
 
 
     def __getstate__(self):
-        self.__dict__['_allEdges']=None
+        self.__dict__['_allEdgesSimpleList']=None
         self.__dict__['root'] = None
         return self.__dict__
 
@@ -273,6 +274,9 @@ class DirectedEdge(Edge):
         return '{}->{}'.format(self.v1, self.v2)
 
 
+
+
+
 class MainFrame (Frame):
 
     menuNames=['Граф','Алгоритми','Про програму']
@@ -301,18 +305,22 @@ class MainFrame (Frame):
 
     def fillToolbar(self):
         path = os.path.dirname (os.path.abspath (__file__))
+        self.photo0 = PhotoImage (file=os.path.join (path, "img/new.png"))
         self.photo1 = PhotoImage (file=os.path.join (path, "img/circle.png"))
         self.photo2 = PhotoImage (file=os.path.join (path, "img/edge.png"))
-        self.photo3 = PhotoImage (file=os.path.join (path, "img/line.png"))
+        self.photo3 = PhotoImage (file=os.path.join (path, "img/line.png"))        
+        self.bt0 = Button (self.frames['toolbar'], image=self.photo0, height=60, width=60,
+                           command=lambda: self.switchButtons (0))
+        self.bt0.grid (column=0, row=0, sticky=(N, W, E))
         self.bt1 = Button (self.frames['toolbar'], image=self.photo1, height=60, width=60,
                            command=lambda: self.switchButtons (1))
-        self.bt1.grid (column=0, row=0, sticky=(N, W, E))
+        self.bt1.grid (column=0, row=1, sticky=(N, W, E))
         self.bt2 = Button (self.frames['toolbar'], image=self.photo2, height=60, width=60,
                            command=lambda: self.switchButtons (2))
-        self.bt2.grid (column=0, row=1, sticky=(N, W, E))
+        self.bt2.grid (column=0, row=2, sticky=(N, W, E))
         self.bt3 = Button (self.frames['toolbar'], image=self.photo3, height=60, width=60,
                            command=lambda: self.switchButtons (3))
-        self.bt3.grid (column=0, row=2, sticky=(N, W, E))
+        self.bt3.grid (column=0, row=3, sticky=(N, W, E))
 
 
     def fillWorkTable(self):
@@ -421,6 +429,8 @@ class MainFrame (Frame):
             self.bt2.config (state="normal")
             self.bt3.config (state="normal")
             self.c['cursor'] = 'cross'
+            self.c.delete('all')
+            self.graph.clean()
 
 
     def createMainMenu(self, root):
@@ -441,16 +451,14 @@ class MainFrame (Frame):
         graphmenu.add_command (label='Зберiгти у форматi DOT', command=self.saveDOTMenu)
         graphmenu.add_separator ()
         graphmenu.add_command (label='Вихід', command=root.quit)
-        algmenu.add_command(label='Очистити коляри', command=self.resetColors)
+        algmenu.add_command(label='Очистити коляри', command=self.onRresetColors)
         algmenu.add_command(label='В глубину', command=self.onDFS)
         algmenu.add_command(label='В ширину', command=self.onBFS)
         algmenu.add_command(label='Кратчайший путь', command=self.onSPS)
-        aboutmenu.add_command (label='Інформація', command=self.infoDialog)
+        aboutmenu.add_command (label='Інформація', command=self.onInfoDialog)
         root.config (menu=self.menu)
 
-    def clearGraphMenu(self):
-        self.c.delete('all')
-        self.graph.clean ()
+    def clearGraphMenu(self):        
         self.switchButtons(0)
 
 
@@ -459,6 +467,7 @@ class MainFrame (Frame):
         if file:
             try:
                 pickle.dump(self.graph, file)
+                self.graph.resetColorsForAnimation(self, self.c, withRoot=True)
             except:
                 file.close()
                 mbx.showerror("Увага!", "Помилка збереження графу")
@@ -489,24 +498,18 @@ class MainFrame (Frame):
         if hasattr(self, 'lst1'):
             if not self.graph.root:
                 mbx.showerror('Де шукати?', 'Оберить початок пошуку')
-                return
-            self.graph.resetColors(self.c)
+                return            
             path=self.lst1(self.graph.getClasicalAjacentLis(), self.graph.root)
-            self.disableAll()
-            self.graph.animatePath(self.c, path)
-            self.disableAll(True)
+            if path: self.animateFoundPath(path)                        
 
 
     def onDFS(self):
         if hasattr(self, 'lst2'):
             if not self.graph.root:
                 mbx.showerror('Де шукати?', 'Оберить початок пошуку')
-                return
-            self.graph.resetColors(self.c)
+                return            
             path=self.lst2(self.graph.getClasicalAjacentLis(), self.graph.root)
-            self.disableAll()
-            self.graph.animatePath (self.c, path)
-            self.disableAll(True)
+            if path: self.animateFoundPath(path)            
 
 
     def onSPS(self):
@@ -514,11 +517,22 @@ class MainFrame (Frame):
             self.lst3()
 
 
-    def disableAll(self, enable=False):
-        for w in {self.bt1, self.bt2, self.bt3}:
+    def animateFoundPath(self, path):
+        self.graph.resetColorsForAnimation(self.c)
+        self.stopTheWorld()
+        self.graph.animatePath (self.c, path)
+        self.stopTheWorld(True)
+            
+
+    def stopTheWorld(self, enable=False):
+        for w in {self.bt0, self.bt1, self.bt2, self.bt3} - {self.bt3 if self.graph.directed else self.bt2}:
             w.configure(state="disabled" if not enable else 'normal')
         for m in MainFrame.menuNames:
             self.menu.entryconfig(m, state="disabled" if not enable else 'normal')
+
+
+    def onRresetColors(self):
+        self.graph.resetColorsForAnimation(self.c, withRoot=True)
 
 
     def allRowColFlexible(self):
@@ -535,7 +549,7 @@ class MainFrame (Frame):
         self.frames['graph'].grid_columnconfigure (0, weight=1)
 
 
-    def infoDialog(self):
+    def onInfoDialog(self):
         text = '''
             Используйте для рисования направленного или 
             ненаправленного графа, а также для обхода его 
@@ -549,9 +563,6 @@ class MainFrame (Frame):
         Message (top, text=text, justify=LEFT, anchor=NW, width=600).grid (row=0, column=0, columnspan=2, padx=30)
         Button (top, text="Вихiд".center (14, ' '), command=top.destroy).grid (row=1, column=1, pady=10, padx=40)
 
-
-    def resetColors(self):
-        self.graph.resetColors(self.c, withRoot=True)
 
 
 def startGUI(lst1=None, lst2=None, lst3=None):
