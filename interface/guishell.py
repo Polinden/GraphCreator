@@ -115,10 +115,7 @@ class Graph:
     def resetColorsForAnimation(self, canvas, withRoot=False):
         for e in self.allEdgesSimpleList:
             e.changeColor(canvas, True)
-        for v in self.al.keys():
-            if not v==self.root:
-                v.changeColor(canvas, True)
-        if withRoot:
+        if withRoot and self.root:
             self.root.changeColor(canvas, True)
             self.root=None
 
@@ -140,7 +137,6 @@ class Graph:
 
     def __getstate__(self):
         self.__dict__['_allEdgesSimpleList']=None
-        self.__dict__['root'] = None
         return self.__dict__
 
 
@@ -462,36 +458,39 @@ class MainFrame (Frame):
         self.switchButtons(0)
 
 
-    def saveFileMenu(self):
-        file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Graph files', '.gra')], title='Обрати файл')
-        if file:
-            try:
-                pickle.dump(self.graph, file)
-                self.graph.resetColorsForAnimation(self, self.c, withRoot=True)
-            except:
-                file.close()
-                mbx.showerror("Увага!", "Помилка збереження графу")
+    def saveFileMenu(self, file=None):
+        try:
+          file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Graph files', '.gra')], title='Обрати файл')
+          if file:
+               self.graph.resetColorsForAnimation(self.c, withRoot=True)
+               pickle.dump(self.graph, file)
+        except Exception as e:
+          print(str(e))
+          if file: file.close()
+          mbx.showerror("Увага!", "Помилка збереження графу")
 
-    def saveDOTMenu(self):
-        file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
-        if file:
-            try:
-                file.write('{}'.format(self.graph))
-            except:
-                file.close()
-                mbx.showerror("Увага!", "Помилка збереження графу")
+    def saveDOTMenu(self, file=None):
+        try:
+           file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
+           if file:
+               file.write('{}'.format(self.graph))
+        except Exception as e:
+           print(str(e))
+           if file: file.close()
+           mbx.showerror("Увага!", "Помилка збереження графу")
 
-    def openFileMenu(self):
-        file = fdialog.askopenfile (mode='rb', filetypes=[('Graph files', '.gra')],  title='Обрати файл')
-        if file:
-            try:
+    def openFileMenu(self, file=None):
+        try:
+           file = fdialog.askopenfile (mode='rb', filetypes=[('Graph files', '.gra')],  title='Обрати файл')
+           if file:
                 self.graph=pickle.load (file)
                 self.c.delete('all')
                 self.graph.drawAllGraph(self.c)
                 self.switchButtons(2 if self.graph.directed else 3)
-            except:
-                file.close()
-                mbx.showerror("Увага!", "Помилка завантаження графу")
+        except Exception as e:
+            print(str(e))
+            if file: file.close()
+            mbx.showerror("Увага!", "Помилка завантаження графу")
 
 
     def onBFS(self):
