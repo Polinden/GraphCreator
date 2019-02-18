@@ -209,8 +209,8 @@ class Vertice:
 
     def __getstate__(self):
         d=self.__dict__.copy()
-        del d['text']
-        del d['circle']
+        if 'text' in d: del d['text']
+        if 'circle' in d: del d['circle']
         return d
 
     def __hash__(self):
@@ -252,7 +252,7 @@ class Edge:
 
     def __getstate__(self):
         d=self.__dict__.copy()
-        del d['line']
+        if 'line' in d: del d['line']
         d['color']=Edge.color
         return d
 
@@ -460,7 +460,7 @@ class MainFrame (Frame):
 
     def saveFileMenu(self, file=None):
         try:
-          file = fdialog.asksaveasfile(mode = 'wb', filetypes=[('Graph files', '.gra')], title='Обрати файл')
+          file = fdialog.asksaveasfile(mode = 'wb', defaultextension='.gra', filetypes=[('Graph files', '.gra')], title='Обрати файл')
           if file:
                self.graph.resetColorsForAnimation(self.c, withRoot=True)
                pickle.dump(self.graph, file)
@@ -471,7 +471,7 @@ class MainFrame (Frame):
 
     def saveDOTMenu(self, file=None):
         try:
-           file = fdialog.asksaveasfile(mode = 'wt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
+           file = fdialog.asksaveasfile(mode = 'wt', defaultextension='.txt', filetypes=[('Txt files', '.txt')], title='Обрати файл')
            if file:
                file.write('{}'.format(self.graph))
         except Exception as e:
@@ -481,7 +481,7 @@ class MainFrame (Frame):
 
     def openFileMenu(self, file=None):
         try:
-           file = fdialog.askopenfile (mode='rb', filetypes=[('Graph files', '.gra')],  title='Обрати файл')
+           file = fdialog.askopenfile (mode='rb', defaultextension='.gra', filetypes=[('Graph files', '.gra'), ('All files', '.*')],  title='Обрати файл')
            if file:
                 self.graph=pickle.load (file)
                 self.c.delete('all')
