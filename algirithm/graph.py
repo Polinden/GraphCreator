@@ -28,14 +28,19 @@ def DFS(graph, root):
         return result
 
 
-def FindShortestWay(graph, start, end, path=[]):
+def TSP(graph, start, end):
+    path=TSPUtil(graph, start, end)
+    return list(zip(path[:-1], path[1:]))
+
+
+def TSPUtil(graph, start, end, path=[]):
         path=path+[start]
         if start==end: return path
         if not start in graph: return None
         shortest = None
         for node in graph[start]:
             if node not in path:
-                newpath = FindShortestWay(graph, node, end, path)
+                newpath = TSPUtil(graph, node, end, path)
                 if newpath:
                     if not shortest or len(newpath) < len(shortest):
                         shortest = newpath

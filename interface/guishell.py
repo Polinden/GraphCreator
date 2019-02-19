@@ -16,7 +16,8 @@ class Graph:
         self.bn = set()
         self.directed=None
         self._allEdges=None
-        self.root=None
+        self.start=None
+        self.finish=None
 
 
     def addVertice(self, x, y):
@@ -107,17 +108,34 @@ class Graph:
         return d
 
     def selectStart(self, v, canvas):
-        if self.root: self.root.changeColor(canvas, True)
-        self.root=v
-        self.root.changeColor(canvas)
+        if self.start: self.start.changeColor(canvas, reset=True)
+        self.start=v
+        self.start.changeColor(canvas)
+
+    def resetStart(self, canvas):
+        if self.start:
+            self.start.changeColor(canvas, reset=True)
+            self.start=None
+
+    def selectFinish(self, v, canvas):
+        if v==self.start: return
+        if self.finish: self.finish.changeColor(canvas, reset=True)
+        self.finish=v
+        self.finish.changeColor(canvas, toEnd=True)
 
 
-    def resetColorsForAnimation(self, canvas, withRoot=False):
+    def resetFinish(self, canvas):
+        if self.finish:
+            self.finish.changeColor(canvas, reset=True)
+            self.finish = None
+
+
+    def resetColorsForAnimation(self, canvas, withStartFinish=False):
         for e in self.allEdgesSimpleList:
-            e.changeColor(canvas, True)
-        if withRoot and self.root:
-            self.root.changeColor(canvas, True)
-            self.root=None
+            e.changeColor(canvas, reset=True)
+        if withStartFinish:
+            self.resetStart(canvas)
+            self.resetFinish(canvas)
 
 
     def animatePath(self, canvas, path=None):
@@ -156,8 +174,10 @@ class Vertice:
     radius = 25
     width = 4
     color = 'blue'
-    altcolor= 'brown'
+    startColor= 'green'
+    finishColor = 'yellow'
     font = 'Arial 8'
+
 
     def __init__(self, x, y, number):
         self.x, self.y, self.number = x, y, number
@@ -202,9 +222,9 @@ class Vertice:
             return False
         return True
 
-    def changeColor(self, canvas, restore=False):
-        if restore: self.color=Vertice.color
-        else: self.color = Vertice.altcolor
+    def changeColor(self, canvas, reset=False, toEnd=False):
+        if reset: self.color=Vertice.color
+        else: self.color = Vertice.finishColor if toEnd else Vertice.startColor
         canvas.itemconfig(self.circle, outline=self.color)
 
     def __getstate__(self):
@@ -245,8 +265,8 @@ class Edge:
     def erase(self, canvas):
         if self.line: canvas.delete(self.line)
 
-    def changeColor(self, canvas, restore=False):
-        if restore: self.color=Edge.color
+    def changeColor(self, canvas, reset=False):
+        if reset: self.color=Edge.color
         else: self.color = Edge.altcolor
         canvas.itemconfig(self.line, fill=self.color)
 
@@ -275,7 +295,11 @@ class DirectedEdge(Edge):
 
 class MainFrame (Frame):
 
-    menuNames=['Граф','Алгоритми','Про програму']
+    menuNames=['Граф','Алгоритми','Iнформацiя',
+               'Новий граф', 'Завантажити граф', 'Зберiгти граф', 'Зберiгти у форматi DOT',
+               'Вихід', 'Очистити коляри', 'В глубину', 'В ширину', 'Кратчайший путь',
+               'Про програму']
+
 
     def __init__(self, root):
         Frame.__init__ (self, root)
@@ -332,6 +356,7 @@ class MainFrame (Frame):
         self.popup.add_command (label="Перейменувати", command=self.renameVrMenu)
         self.popup.add_separator()
         self.popup.add_command(label="Початок пошуку", command=self.startVrMenu)
+        self.popup.add_command(label="Конець пошуку", command=self.finishVrMenu)
 
 
     def popupMenu(self, event):
@@ -352,6 +377,10 @@ class MainFrame (Frame):
 
     def startVrMenu(self):
             self.graph.selectStart(self.curv, self.c)
+
+
+    def finishVrMenu(self):
+        self.graph.selectFinish(self.curv, self.c)
 
 
     def removeEdMenu(self):
@@ -440,19 +469,20 @@ class MainFrame (Frame):
         self.menu.add_cascade (label=MainFrame.menuNames[0], menu=graphmenu)
         self.menu.add_cascade(label=MainFrame.menuNames[1], menu=algmenu)
         self.menu.add_cascade (label=MainFrame.menuNames[2], menu=aboutmenu)
-        graphmenu.add_command (label='Новий граф', command=self.clearGraphMenu)
-        graphmenu.add_command (label='Завантажити граф', command=self.openFileMenu)
+        graphmenu.add_command (label=MainFrame.menuNames[3], command=self.clearGraphMenu)
+        graphmenu.add_command (label=MainFrame.menuNames[4], command=self.openFileMenu)
         graphmenu.add_separator()
-        graphmenu.add_command (label='Зберiгти граф', command=self.saveFileMenu)
-        graphmenu.add_command (label='Зберiгти у форматi DOT', command=self.saveDOTMenu)
+        graphmenu.add_command (label=MainFrame.menuNames[5], command=self.saveFileMenu)
+        graphmenu.add_command (label=MainFrame.menuNames[6], command=self.saveDOTMenu)
         graphmenu.add_separator ()
-        graphmenu.add_command (label='Вихід', command=root.quit)
-        algmenu.add_command(label='Очистити коляри', command=self.onRresetColors)
-        algmenu.add_command(label='В глубину', command=self.onDFS)
-        algmenu.add_command(label='В ширину', command=self.onBFS)
-        algmenu.add_command(label='Кратчайший путь', command=self.onSPS)
-        aboutmenu.add_command (label='Інформація', command=self.onInfoDialog)
+        graphmenu.add_command (label=MainFrame.menuNames[7], command=root.quit)
+        algmenu.add_command(label=MainFrame.menuNames[8], command=self.onRresetColors)
+        algmenu.add_command(label=MainFrame.menuNames[9], command=self.onDFS)
+        algmenu.add_command(label=MainFrame.menuNames[10], command=self.onBFS)
+        algmenu.add_command(label=MainFrame.menuNames[11], command=self.onSPS)
+        aboutmenu.add_command (label=MainFrame.menuNames[12], command=self.onInfoDialog)
         root.config (menu=self.menu)
+
 
     def clearGraphMenu(self):        
         self.switchButtons(0)
@@ -462,7 +492,7 @@ class MainFrame (Frame):
         try:
           file = fdialog.asksaveasfile(mode = 'wb', defaultextension='.gra', filetypes=[('Graph files', '.gra')], title='Обрати файл')
           if file:
-               self.graph.resetColorsForAnimation(self.c, withRoot=True)
+               self.graph.resetColorsForAnimation(self.c, withStartFinish=True)
                pickle.dump(self.graph, file)
         except Exception as e:
           print(str(e))
@@ -495,25 +525,32 @@ class MainFrame (Frame):
 
     def onBFS(self):
         if hasattr(self, 'lst1'):
-            if not self.graph.root:
+            if not self.graph.start:
                 mbx.showerror('Де шукати?', 'Оберить початок пошуку')
                 return            
-            path=self.lst1(self.graph.getClasicalAjacentLis(), self.graph.root)
+            path=self.lst1(self.graph.getClasicalAjacentLis(), self.graph.start)
             if path: self.animateFoundPath(path)                        
 
 
     def onDFS(self):
         if hasattr(self, 'lst2'):
-            if not self.graph.root:
+            if not self.graph.start:
                 mbx.showerror('Де шукати?', 'Оберить початок пошуку')
                 return            
-            path=self.lst2(self.graph.getClasicalAjacentLis(), self.graph.root)
+            path=self.lst2(self.graph.getClasicalAjacentLis(), self.graph.start)
             if path: self.animateFoundPath(path)            
 
 
     def onSPS(self):
         if hasattr(self, 'lst3'):
-            self.lst3()
+            if not self.graph.start:
+                mbx.showerror('Де шукати?', 'Оберить початок пошуку')
+                return
+            if not self.graph.finish:
+                mbx.showerror('Де шукати?', 'Оберить кiнець пошуку')
+                return
+            path=self.lst3(self.graph.getClasicalAjacentLis(), self.graph.start, self.graph.finish)
+            if path: self.animateFoundPath(path)
 
 
     def animateFoundPath(self, path):
@@ -526,12 +563,12 @@ class MainFrame (Frame):
     def stopTheWorld(self, enable=False):
         for w in {self.bt0, self.bt1, self.bt2, self.bt3} - {self.bt3 if self.graph.directed else self.bt2}:
             w.configure(state="disabled" if not enable else 'normal')
-        for m in MainFrame.menuNames:
+        for m in MainFrame.menuNames[:3]:
             self.menu.entryconfig(m, state="disabled" if not enable else 'normal')
 
 
     def onRresetColors(self):
-        self.graph.resetColorsForAnimation(self.c, withRoot=True)
+        self.graph.resetColorsForAnimation(self.c, withStartFinish=True)
 
 
     def allRowColFlexible(self):
