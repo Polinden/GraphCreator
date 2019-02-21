@@ -140,8 +140,8 @@ class Graph:
 
     def animatePath(self, canvas, path=None):
         if not path: return
-        crs=canvas['cursor']
         canvas['cursor']='watch'
+        crs=canvas['cursor']
         if not isinstance(path[0], tuple):
             path = [v for p in path for v in self.al.keys() if v.number==p]
             path = zip(path[:-1], path[1:])
@@ -231,6 +231,7 @@ class Vertice:
         d=self.__dict__.copy()
         if 'text' in d: del d['text']
         if 'circle' in d: del d['circle']
+        d.color=Vertice.color
         return d
 
     def __hash__(self):
@@ -315,6 +316,7 @@ class MainFrame (Frame):
         self.dragY = 0
         self.lineDraging = None
         self.graph = Graph()
+        self.suspend=False
 
     def createFrames(self):
         tb = Frame (self, bd=1, relief=SUNKEN)
@@ -360,6 +362,7 @@ class MainFrame (Frame):
 
 
     def popupMenu(self, event):
+        if self.suspend: return
         self.curv = self.graph.getVertice (event.x, event.y)
         if self.curv:
             self.popup.tk_popup (event.x_root, event.y_root)
@@ -403,14 +406,17 @@ class MainFrame (Frame):
             self.c.unbind ('<ButtonRelease-1>')
 
     def onDragstart(self, event):
+        if self.suspend: return
         self.dragX = event.x
         self.dragY = event.y
 
     def onDraging(self, event):
+        if self.suspend: return
         self.c.delete (self.lineDraging)
         self.lineDraging = self.c.create_line (self.dragX, self.dragY, event.x, event.y, fill='gray', width=3)
 
     def onDropAddEdge(self, event):
+        if self.suspend: return
         self.c.delete (self.lineDraging)
         v1 = self.graph.getVertice (self.dragX, self.dragY)
         v2 = self.graph.getVertice (event.x, event.y)
@@ -554,13 +560,14 @@ class MainFrame (Frame):
 
 
     def animateFoundPath(self, path):
-        self.graph.resetColorsForAnimation(self.c)
         self.stopTheWorld()
+        self.graph.resetColorsForAnimation(self.c)
         self.graph.animatePath (self.c, path)
         self.stopTheWorld(True)
             
 
     def stopTheWorld(self, enable=False):
+        self.suspend=not enable
         for w in {self.bt0, self.bt1, self.bt2, self.bt3} - {self.bt3 if self.graph.directed else self.bt2}:
             w.configure(state="disabled" if not enable else 'normal')
         for m in MainFrame.menuNames[:3]:

@@ -30,6 +30,7 @@ def DFS(graph, root):
 
 def TSP(graph, start, end):
     path=TSPUtil(graph, start, end)
+    if not path: return []
     return list(zip(path[:-1], path[1:]))
 
 
