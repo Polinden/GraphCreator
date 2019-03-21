@@ -292,8 +292,8 @@ class DirectedEdge(Edge):
 
 class MainFrame(Frame):
     menuNames = ['Граф', 'Алгоритми', 'Iнформацiя',
-                 'Новий граф', 'Завантажити граф', 'Зберiгти граф', 'Зберiгти у форматi DOT',
-                 'Вихід', 'Очистити коляри', 'В глубину', 'В ширину', 'Кратчайший путь',
+                 'Новий граф', 'Завантажити граф', 'Зберегти граф', 'Зберегти у форматi DOT',
+                 'Вихід', 'Очистити кольори', 'В глибину', 'В ширину', 'Найкоротший шлях',
                  'Про програму']
 
     def __init__(self, root):
@@ -351,7 +351,7 @@ class MainFrame(Frame):
         self.popup.add_command(label="Перейменувати", command=self.renameVrMenu)
         self.popup.add_separator()
         self.popup.add_command(label="Початок пошуку", command=self.startVrMenu)
-        self.popup.add_command(label="Конець пошуку", command=self.finishVrMenu)
+        self.popup.add_command(label="Кінець пошуку", command=self.finishVrMenu)
 
     def popupMenu(self, event):
         if self.suspend:
@@ -466,7 +466,7 @@ class MainFrame(Frame):
         graphmenu.add_command(label=MainFrame.menuNames[6], command=self.saveDOTMenu)
         graphmenu.add_separator()
         graphmenu.add_command(label=MainFrame.menuNames[7], command=root.quit)
-        algmenu.add_command(label=MainFrame.menuNames[8], command=self.onRresetColors)
+        algmenu.add_command(label=MainFrame.menuNames[8], command=self.onResetColors)
         algmenu.add_command(label=MainFrame.menuNames[9], command=self.onDFS)
         algmenu.add_command(label=MainFrame.menuNames[10], command=self.onBFS)
         algmenu.add_command(label=MainFrame.menuNames[11], command=self.onSPS)
@@ -519,7 +519,7 @@ class MainFrame(Frame):
     def onBFS(self):
         if hasattr(self, 'lst1'):
             if not self.graph.start:
-                mbx.showerror('Де шукати?', 'Оберить початок пошуку')
+                mbx.showerror('Де шукати?', 'Оберіть початок пошуку')
                 return
             path = self.lst1(self.graph.getClasicalAjacentLis(), self.graph.start)
             if path:
@@ -528,7 +528,7 @@ class MainFrame(Frame):
     def onDFS(self):
         if hasattr(self, 'lst2'):
             if not self.graph.start:
-                mbx.showerror('Де шукати?', 'Оберить початок пошуку')
+                mbx.showerror('Де шукати?', 'Оберіть початок пошуку')
                 return
             path = self.lst2(self.graph.getClasicalAjacentLis(), self.graph.start)
             if path:
@@ -537,10 +537,10 @@ class MainFrame(Frame):
     def onSPS(self):
         if hasattr(self, 'lst3'):
             if not self.graph.start:
-                mbx.showerror('Де шукати?', 'Оберить початок пошуку')
+                mbx.showerror('Де шукати?', 'Оберіть початок пошуку')
                 return
             if not self.graph.finish:
-                mbx.showerror('Де шукати?', 'Оберить кiнець пошуку')
+                mbx.showerror('Де шукати?', 'Оберіть кiнець пошуку')
                 return
             path = self.lst3(self.graph.getClasicalAjacentLis(), self.graph.start, self.graph.finish)
             if path:
@@ -559,7 +559,7 @@ class MainFrame(Frame):
         for m in MainFrame.menuNames[:3]:
             self.menu.entryconfig(m, state="disabled" if not enable else 'normal')
 
-    def onRresetColors(self):
+    def onResetColors(self):
         self.graph.resetColorsForAnimation(self.c, withStartFinish=True)
 
     def allRowColFlexible(self):
