@@ -8,6 +8,7 @@ import tkinter.messagebox as mbx
 from math import *
 from tkinter import *
 from tkinter import simpledialog
+from enum import Enum
 
 
 class Graph:
@@ -61,6 +62,8 @@ class Graph:
         self.deleteEdges(v, canvas)
         v.erase(canvas)
         self.bn.remove(v.number)
+        if v == self.start: self.start=None
+        if v == self.finish: self.finish = None
         del self.al[v]
 
     def drawAllGraph(self, canvas):
@@ -104,50 +107,55 @@ class Graph:
         return d
 
     def selectStart(self, v, canvas):
+        if v == self.finish:
+            self.finish=None
         if self.start:
-            self.start.changeColor(canvas, reset=True)
+            self.start.changeColor(canvas)
         self.start = v
-        self.start.changeColor(canvas)
+        self.start.changeColor(canvas, optResetColor.toStart)
 
-    def resetStart(self, canvas):
-        if self.start:
-            self.start.changeColor(canvas, reset=True)
-            self.start = None
 
     def selectFinish(self, v, canvas):
         if v == self.start:
-            return
+            self.start = None
         if self.finish:
-            self.finish.changeColor(canvas, reset=True)
+            self.finish.changeColor(canvas)
         self.finish = v
-        self.finish.changeColor(canvas, toEnd=True)
+        self.finish.changeColor(canvas, optResetColor.toEnd)
 
-    def resetFinish(self, canvas):
-        if self.finish:
-            self.finish.changeColor(canvas, reset=True)
-            self.finish = None
 
-    def resetColorsForAnimation(self, canvas, withStartFinish=False):
+    def resetColorsForAnimation(self, canvas, dontTouchStartFinish=False):
         for e in self.allEdgesSimpleList:
-            e.changeColor(canvas, reset=True)
-        if withStartFinish:
-            self.resetStart(canvas)
-            self.resetFinish(canvas)
+            e.changeColor(canvas)
+        vs = filter(self.notStartFinish, self.al.keys()) if dontTouchStartFinish else self.al.keys()
+        for v in vs:
+            v.changeColor(canvas)
+
 
     def animatePath(self, canvas, path=None):
         if not path:
             return
-            print(path)
+        print(path)
+        self.resetColorsForAnimation(canvas, dontTouchStartFinish=True)
+        time.sleep(0.7)
         crs = canvas['cursor']
         canvas['cursor'] = 'watch'
         if not isinstance(path[0], tuple):
             path = [v for p in path for v in self.al.keys() if v.number == p]
             path = zip(path[:-1], path[1:])
         for e in filter(lambda x: x, (self.connected(*vt) for vt in path)):
-            time.sleep(0.7)
-            e.changeColor(canvas)
+            e.changeColor(canvas, optResetColor.toPassed)
+            if self.notStartFinish(e.v1):
+                e.v1.changeColor (canvas, optResetColor.toPassed)
+            if self.notStartFinish (e.v2):
+                e.v2.changeColor (canvas, optResetColor.toPassed)
             canvas.update()
+            time.sleep (0.7)
         canvas['cursor'] = crs
+
+
+    def notStartFinish(self, v):
+        return not (v==self.start or v==self.finish)
 
     def __getstate__(self):
         self.__dict__['_allEdgesSimpleList'] = None
@@ -165,12 +173,20 @@ class Graph:
         return s1 + s2 + s3
 
 
+class optResetColor(Enum):
+    toEnd = 1
+    toStart = 3
+    toPassed = 4
+    noOpt = 5
+
+
 class Vertice:
     radius = 25
     width = 4
     color = 'blue'
-    startColor = 'green'
-    finishColor = 'yellow'
+    finishColor = 'green'
+    startColor = 'yellow'
+    passedColor = 'red'
     font = 'Arial 8'
 
     def __init__(self, x, y, number):
@@ -218,12 +234,17 @@ class Vertice:
         self.number = newNumber
         canvas.itemconfig(self.text, text=newNumber)
 
-    def changeColor(self, canvas, reset=False, toEnd=False):
-        if reset:
+    def changeColor(self, canvas, option=optResetColor.noOpt):
+        if option==optResetColor.noOpt:
             self.color = Vertice.color
-        else:
-            self.color = Vertice.finishColor if toEnd else Vertice.startColor
+        elif option == optResetColor.toEnd:
+            self.color = Vertice.finishColor
+        elif option == optResetColor.toPassed:
+            self.color = Vertice.passedColor
+        elif option == optResetColor.toStart:
+            self.color = Vertice.startColor
         canvas.itemconfig(self.circle, outline=self.color)
+
 
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -231,13 +252,14 @@ class Vertice:
             del d['text']
         if 'circle' in d:
             del d['circle']
-        d.color = Vertice.color
+        d['color'] = Vertice.color
         return d
 
     def __hash__(self):
         return hash((self.x, self.y))
 
     def __eq__(self, other):
+        if not other: return False          #if None!
         return self.x == other.x and self.y == other.y
 
     def __repr__(self):
@@ -247,7 +269,7 @@ class Vertice:
 class Edge:
     width = 4
     color = 'black'
-    altcolor = 'red'
+    passedColor = 'red'
 
     def __init__(self, v1, v2):
         self.v1, self.v2 = v1, v2
@@ -263,11 +285,11 @@ class Edge:
         if self.line:
             canvas.delete(self.line)
 
-    def changeColor(self, canvas, reset=False):
-        if reset:
+    def changeColor(self, canvas, option=optResetColor.noOpt):
+        if option==optResetColor.noOpt:
             self.color = Edge.color
-        else:
-            self.color = Edge.altcolor
+        elif option==optResetColor.toPassed:
+            self.color = Edge.passedColor
         canvas.itemconfig(self.line, fill=self.color)
 
     def __getstate__(self):
@@ -482,7 +504,7 @@ class MainFrame(Frame):
             file = fdialog.asksaveasfile(mode='wb', defaultextension='.gra', filetypes=[('Graph files', '.gra')],
                                          title='Обрати файл')
             if file:
-                self.graph.resetColorsForAnimation(self.c, withStartFinish=True)
+                self.graph.resetColorsForAnimation(self.c)
                 pickle.dump(self.graph, file)
         except Exception as e:
             print(e)
@@ -548,19 +570,24 @@ class MainFrame(Frame):
                 self.animateFoundPath(path)
 
 
-
     def onCNT(self):
         if hasattr(self, 'lst4'):
-            edgs = self.graph.al.keys()
-            if not edgs: return
-            fstedge = next(iter(edgs))
-            ifcon = self.lst4(self.graph.getClasicalAjacentLis(), fstedge)
-            mbx.showinfo('Результат', 'Цей граф є зв`язним' if ifcon else 'Цей граф є незв`язним')
+            if self.graph.directed:
+                mbx.showinfo ('В роботi..', 'Алгоритм Косарайю не реализовано!')
+                return
+            vs = self.graph.al.keys()
+            if not vs:
+                return
+            cal = self.graph.getClasicalAjacentLis()
+            if len(vs) != len(cal.keys()):
+                mbx.showinfo ('Результат', 'Цей граф є незв`язним')
+                return
+            res = self.lst4(cal, next(iter(vs)))
+            mbx.showinfo('Результат', 'Цей граф є зв`язним' if res else 'Цей граф є незв`язним')
 
 
     def animateFoundPath(self, path):
         self.stopTheWorld()
-        self.graph.resetColorsForAnimation(self.c)
         self.graph.animatePath(self.c, path)
         self.stopTheWorld(True)
 
@@ -572,7 +599,9 @@ class MainFrame(Frame):
             self.menu.entryconfig(m, state="disabled" if not enable else 'normal')
 
     def onResetColors(self):
-        self.graph.resetColorsForAnimation(self.c, withStartFinish=True)
+        self.graph.start=None
+        self.graph.finish=None
+        self.graph.resetColorsForAnimation(self.c)
 
     def allRowColFlexible(self):
         self.root.columnconfigure(0, weight=1)
