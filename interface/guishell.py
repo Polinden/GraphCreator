@@ -294,7 +294,7 @@ class MainFrame(Frame):
     menuNames = ['Граф', 'Алгоритми', 'Iнформацiя',
                  'Новий граф', 'Завантажити граф', 'Зберегти граф', 'Зберегти у форматi DOT',
                  'Вихід', 'Очистити кольори', 'В глибину', 'В ширину', 'Найкоротший шлях',
-                 'Про програму']
+                 'Про програму','Перевірка зв`язності графа']
 
     def __init__(self, root):
         Frame.__init__(self, root)
@@ -470,6 +470,7 @@ class MainFrame(Frame):
         algmenu.add_command(label=MainFrame.menuNames[9], command=self.onDFS)
         algmenu.add_command(label=MainFrame.menuNames[10], command=self.onBFS)
         algmenu.add_command(label=MainFrame.menuNames[11], command=self.onSPS)
+        algmenu.add_command (label=MainFrame.menuNames[13], command=self.onCNT)
         aboutmenu.add_command(label=MainFrame.menuNames[12], command=self.onInfoDialog)
         root.config(menu=self.menu)
 
@@ -546,6 +547,17 @@ class MainFrame(Frame):
             if path:
                 self.animateFoundPath(path)
 
+
+
+    def onCNT(self):
+        if hasattr(self, 'lst4'):
+            edgs = self.graph.al.keys()
+            if not edgs: return
+            fstedge = next(iter(edgs))
+            ifcon = self.lst4(self.graph.getClasicalAjacentLis(), fstedge)
+            mbx.showinfo('Результат', 'Цей граф є зв`язним' if ifcon else 'Цей граф є незв`язним')
+
+
     def animateFoundPath(self, path):
         self.stopTheWorld()
         self.graph.resetColorsForAnimation(self.c)
@@ -590,11 +602,11 @@ class MainFrame(Frame):
         Button(top, text="Вихiд".center(14, ' '), command=top.destroy).grid(row=1, column=1, pady=10, padx=40)
 
 
-def startGUI(lst1=None, lst2=None, lst3=None):
+def startGUI(lst1=None, lst2=None, lst3=None, lst4=None):
     window = Tk()
     window.title("Дослiдник Графiв")
     mf = MainFrame(window)
-    mf.lst1, mf.lst2, mf.lst3 = lst1, lst2, lst3
+    mf.lst1, mf.lst2, mf.lst3, mf.lst4 = lst1, lst2, lst3, lst4
     window.geometry('1200x800')
     window.mainloop()
 

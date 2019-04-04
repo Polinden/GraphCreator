@@ -28,6 +28,14 @@ def DFS(graph, root):
     return result
 
 
+def TCN(graph, root):
+    result = collections.deque ()
+    visited = graph.fromkeys (graph, False)
+    DFSUtil (graph, root, visited, result)
+    print([* visited.values()])
+    return all(visited.values())
+
+
 def TSP(graph, start, end):
     path = TSPUtil(graph, start, end)
     if not path: return []
